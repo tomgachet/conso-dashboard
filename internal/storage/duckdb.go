@@ -43,6 +43,14 @@ func (s *Store) Close() error {
 	return s.db.Close()
 }
 
+func (s *Store) PRM(ctx context.Context) (string, error) {
+	var prm string
+	if err := s.db.QueryRowContext(ctx, `SELECT prm FROM consumption_load_curve LIMIT 1`).Scan(&prm); err != nil {
+		return "", fmt.Errorf("lecture du PRM: %w", err)
+	}
+	return prm, nil
+}
+
 func (s *Store) DailyConsumption(ctx context.Context, days int) ([]DailyConsumption, error) {
 	rows, err := s.db.QueryContext(ctx, `
 		WITH daily AS (

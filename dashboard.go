@@ -20,6 +20,7 @@ import (
 var dashboardFiles embed.FS
 
 type dailyReader interface {
+	PRM(context.Context) (string, error)
 	DailyConsumption(context.Context, int) ([]storage.DailyConsumption, error)
 	IntervalConsumption(context.Context, time.Time) ([]storage.IntervalConsumption, error)
 }
@@ -43,6 +44,7 @@ func runServer(args []string) error {
 	}
 	mux := http.NewServeMux()
 	mux.Handle("GET /", http.FileServerFS(static))
+	mux.HandleFunc("GET /api/info", infoHandler(store))
 	mux.HandleFunc("GET /api/daily", dailyHandler(store))
 	mux.HandleFunc("GET /api/intervals", intervalHandler(store))
 
@@ -57,6 +59,18 @@ func runServer(args []string) error {
 	}
 	log.Printf("dashboard disponible sur http://%s", displayAddr)
 	return server.ListenAndServe()
+}
+
+func infoHandler(reader dailyReader) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		prm, err := reader.PRM(r.Context())
+		if err != nil {
+			log.Printf("dashboard: %v", err)
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "lecture de DuckDB impossible"})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]string{"prm": prm})
+	}
 }
 
 func intervalHandler(reader dailyReader) http.HandlerFunc {
