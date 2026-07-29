@@ -1,16 +1,14 @@
 # conso-dashboard
 
-Première brique d'un tableau de bord personnel : cette commande Go récupère la consommation quotidienne d'un compteur Linky via [Conso API](https://conso.boris.sh/) et la conserve dans un fichier DuckDB.
+Une commande Go qui récupère la courbe de consommation d'un compteur Linky via [Conso API](https://conso.boris.sh/) et la conserve dans DuckDB.
 
 ## Configuration
-
-Obtenez un token sur Conso API, puis créez votre fichier local :
 
 ```sh
 cp .env.example .env
 ```
 
-Renseignez `CONSO_API_TOKEN` et le numéro `CONSO_API_PRM` à 14 chiffres. Le fichier `.env` est ignoré par Git.
+Renseignez dans `.env` le token `CONSO_API_TOKEN` et le numéro de compteur `CONSO_API_PRM` à 14 chiffres.
 
 ## Importer les 30 derniers jours
 
@@ -21,38 +19,29 @@ set +a
 go run .
 ```
 
-La base est créée dans `data/conso.duckdb`. Pour choisir une période :
+Pour choisir une période :
 
 ```sh
 go run . -start 2026-07-01 -end 2026-07-29
 ```
 
-La date de début est incluse et la date de fin est exclue, conformément à Conso API. Une nouvelle exécution met à jour les journées déjà présentes au lieu de créer des doublons.
+La commande découpe automatiquement les périodes pour respecter la limite de Conso API. Elle crée `data/conso.duckdb` et alimente la table `consumption_load_curve`. Un nouvel import met à jour les créneaux existants sans créer de doublons.
 
-## Importer les relevés par demi-heure
+## Données stockées
 
-La courbe de charge doit être activée dans votre espace Enedis. Pour importer les puissances moyennes mesurées sur chaque intervalle :
+Chaque ligne contient notamment l'horodatage `reading_at`, la puissance moyenne `value_w` en watts et la durée `interval_length`. Le compteur fournit actuellement des intervalles de 15 minutes (`PT15M`).
 
-```sh
-go run . -type load-curve -start 2026-07-01 -end 2026-07-29
+La consommation quotidienne en kWh se calcule directement depuis ces mesures :
+
+```sql
+SELECT
+    CAST(reading_at - INTERVAL 1 MICROSECOND AS DATE) AS day,
+    SUM(value_w * 0.25) / 1000 AS consumption_kwh
+FROM consumption_load_curve
+WHERE interval_length = 'PT15M'
+GROUP BY day
+ORDER BY day;
 ```
-
-Ces mesures sont enregistrées dans `consumption_load_curve`. Une nouvelle exécution met à jour les mêmes horodatages sans créer de doublons.
-Les périodes de plus de 6 jours sont automatiquement découpées pour respecter la limite imposée par l'API Enedis sur les courbes de charge.
-
-## Schéma initial
-
-La table `daily_consumption` contient :
-
-- `prm` : identifiant du compteur ;
-- `reading_date` : date du relevé ;
-- `value_wh` : consommation quotidienne en Wh ;
-- `quality` : qualité fournie par Enedis ;
-- `fetched_at` : date de récupération.
-
-La clé primaire est `(prm, reading_date)`.
-
-La table `consumption_load_curve` contient l'horodatage `reading_at`, la puissance moyenne `value_w` en watts, la durée `interval_length`, le type de mesure `measure_type`, la qualité et la date de récupération. Sa clé primaire est `(prm, reading_at)`.
 
 ## Tests
 

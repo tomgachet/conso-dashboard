@@ -18,14 +18,7 @@ type Reading struct {
 	MeasureType    string `json:"measure_type"`
 }
 
-type DailyConsumption struct {
-	UsagePointID    string    `json:"usage_point_id"`
-	Quality         string    `json:"quality"`
-	IntervalReading []Reading `json:"interval_reading"`
-}
-
-type LoadCurve struct {
-	UsagePointID    string    `json:"usage_point_id"`
+type Consumption struct {
 	Quality         string    `json:"quality"`
 	IntervalReading []Reading `json:"interval_reading"`
 }
@@ -63,18 +56,10 @@ func NewClient(baseURL, token, prm string, httpClient *http.Client) (*Client, er
 	}, nil
 }
 
-func (c *Client) DailyConsumption(ctx context.Context, start, end time.Time) (DailyConsumption, error) {
-	var result DailyConsumption
-	if err := c.get(ctx, "daily_consumption", start, end, &result); err != nil {
-		return DailyConsumption{}, err
-	}
-	return result, nil
-}
-
-func (c *Client) ConsumptionLoadCurve(ctx context.Context, start, end time.Time) (LoadCurve, error) {
-	var result LoadCurve
+func (c *Client) Consumption(ctx context.Context, start, end time.Time) (Consumption, error) {
+	var result Consumption
 	if err := c.get(ctx, "consumption_load_curve", start, end, &result); err != nil {
-		return LoadCurve{}, err
+		return Consumption{}, err
 	}
 	return result, nil
 }

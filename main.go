@@ -14,11 +14,11 @@ import (
 )
 
 func main() {
+	const dbPath = "data/conso.duckdb"
+
 	today := time.Now().Truncate(24 * time.Hour)
 	startFlag := flag.String("start", today.AddDate(0, 0, -30).Format(time.DateOnly), "date de début incluse (AAAA-MM-JJ)")
 	endFlag := flag.String("end", today.Format(time.DateOnly), "date de fin exclue (AAAA-MM-JJ)")
-	dbFlag := flag.String("db", "data/conso.duckdb", "chemin du fichier DuckDB")
-	typeFlag := flag.String("type", "daily", "type d'import: daily ou load-curve")
 	flag.Parse()
 
 	start, err := time.Parse(time.DateOnly, *startFlag)
@@ -38,13 +38,13 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	if err := os.MkdirAll(filepath.Dir(*dbFlag), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(dbPath), 0o755); err != nil {
 		log.Fatalf("création du dossier de données: %v", err)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
-	store, err := storage.Open(*dbFlag)
+	store, err := storage.Open(dbPath)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -53,32 +53,18 @@ func main() {
 		log.Fatal(err)
 	}
 	var count int
-	switch *typeFlag {
-	case "daily":
-		result, err := client.DailyConsumption(ctx, start, end)
+	for _, period := range splitPeriod(start, end, 6) {
+		result, err := client.Consumption(ctx, period.start, period.end)
 		if err != nil {
 			log.Fatal(err)
 		}
-		count, err = store.UpsertDailyConsumption(ctx, prm, result.Quality, result.IntervalReading)
-	case "load-curve":
-		for _, period := range splitPeriod(start, end, 6) {
-			result, requestErr := client.ConsumptionLoadCurve(ctx, period.start, period.end)
-			if requestErr != nil {
-				log.Fatal(requestErr)
-			}
-			stored, storeErr := store.UpsertConsumptionLoadCurve(ctx, prm, result.Quality, result.IntervalReading)
-			if storeErr != nil {
-				log.Fatal(storeErr)
-			}
-			count += stored
+		stored, err := store.UpsertConsumptionLoadCurve(ctx, prm, result.Quality, result.IntervalReading)
+		if err != nil {
+			log.Fatal(err)
 		}
-	default:
-		log.Fatalf("type d'import inconnu %q (valeurs possibles: daily, load-curve)", *typeFlag)
+		count += stored
 	}
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Printf("%d relevé(s) %s enregistré(s) dans %s\n", count, *typeFlag, *dbFlag)
+	fmt.Printf("%d relevé(s) enregistré(s) dans %s\n", count, dbPath)
 }
 
 type period struct {
