@@ -2,6 +2,17 @@
 
 Une commande Go qui récupère la courbe de consommation d'un compteur Linky via [Conso API](https://conso.boris.sh/) et la conserve dans DuckDB.
 
+## Installation
+
+Téléchargez l'archive Linux amd64 depuis la [dernière release](https://github.com/tomgachet/conso-dashboard/releases/latest), puis extrayez-la :
+
+```sh
+tar -xzf conso-dashboard-linux-amd64.tar.gz
+./conso-dashboard --version
+```
+
+Le nom de l'exécutable reste `conso-dashboard`. La version est portée par la release et le nom de l'archive.
+
 ## Configuration
 
 ```sh
@@ -48,3 +59,7 @@ ORDER BY day;
 ```sh
 go test ./...
 ```
+
+## Licence
+
+Ce projet est distribué sous licence MIT.

@@ -13,7 +13,17 @@ import (
 	"github.com/tomgachet/conso-dashboard/internal/storage"
 )
 
+var version = "dev"
+
 func main() {
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "version", "--version", "-v":
+			fmt.Printf("conso-dashboard %s\n", version)
+			return
+		}
+	}
+
 	const dbPath = "data/conso.duckdb"
 
 	today := time.Now().Truncate(24 * time.Hour)
