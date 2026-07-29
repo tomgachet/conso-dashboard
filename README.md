@@ -40,6 +40,20 @@ Pour choisir une période :
 
 La date de début est incluse et la date de fin est exclue. La commande découpe automatiquement les périodes pour respecter la limite de Conso API. Elle crée `data/conso.duckdb` et alimente la table `consumption_load_curve`. Un nouvel import met à jour les créneaux existants sans créer de doublons.
 
+## Dashboard
+
+Lancez le dashboard local après avoir importé des données :
+
+```sh
+./conso-dashboard serve
+```
+
+Ouvrez ensuite <http://localhost:8080>. Le dashboard affiche les consommations quotidiennes sur 7, 30 ou 90 jours. Pour changer l'adresse d'écoute :
+
+```sh
+./conso-dashboard serve -addr :9090
+```
+
 ## Données stockées
 
 Chaque ligne contient notamment l'horodatage `reading_at`, la puissance moyenne `value_w` en watts et la durée `interval_length`. Le compteur fournit actuellement des intervalles de 15 minutes (`PT15M`).

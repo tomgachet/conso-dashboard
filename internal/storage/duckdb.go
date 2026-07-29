@@ -16,6 +16,11 @@ type Store struct {
 	db *sql.DB
 }
 
+type DailyConsumption struct {
+	Day time.Time
+	KWh float64
+}
+
 func Open(path string) (*Store, error) {
 	db, err := sql.Open("duckdb", path)
 	if err != nil {
@@ -31,6 +36,44 @@ func Open(path string) (*Store, error) {
 
 func (s *Store) Close() error {
 	return s.db.Close()
+}
+
+func (s *Store) DailyConsumption(ctx context.Context, days int) ([]DailyConsumption, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		WITH daily AS (
+			SELECT
+				CAST(reading_at - INTERVAL 1 MICROSECOND AS DATE) AS day,
+				SUM(value_w * CASE interval_length
+					WHEN 'PT15M' THEN 0.25
+					WHEN 'PT30M' THEN 0.5
+					ELSE 0
+				END) / 1000 AS consumption_kwh
+			FROM consumption_load_curve
+			GROUP BY day
+		)
+		SELECT day, consumption_kwh
+		FROM (
+			SELECT day, consumption_kwh FROM daily ORDER BY day DESC LIMIT ?
+		)
+		ORDER BY day
+	`, days)
+	if err != nil {
+		return nil, fmt.Errorf("lecture des consommations quotidiennes: %w", err)
+	}
+	defer rows.Close()
+
+	var result []DailyConsumption
+	for rows.Next() {
+		var point DailyConsumption
+		if err := rows.Scan(&point.Day, &point.KWh); err != nil {
+			return nil, fmt.Errorf("lecture d'une consommation quotidienne: %w", err)
+		}
+		result = append(result, point)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("lecture des consommations quotidiennes: %w", err)
+	}
+	return result, nil
 }
 
 func (s *Store) Migrate(ctx context.Context) error {

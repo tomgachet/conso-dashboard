@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Consommation électrique</title>
+  <style>
+    :root{color-scheme:dark;--bg:#09111f;--panel:#111d31;--line:#263854;--text:#edf6ff;--muted:#91a4bd;--accent:#4dd4a5}
+    *{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 15% 0,#183451,transparent 35%),var(--bg);color:var(--text);font:16px system-ui,sans-serif}.wrap{width:min(1000px,calc(100% - 32px));margin:48px auto}.top{display:flex;align-items:end;justify-content:space-between;gap:20px;flex-wrap:wrap}.eyebrow{color:var(--accent);font-size:.75rem;font-weight:750;letter-spacing:.12em;text-transform:uppercase}h1{font-size:clamp(2rem,6vw,4rem);line-height:1;margin:.3rem 0 0}select{background:var(--panel);border:1px solid var(--line);border-radius:10px;color:var(--text);padding:10px 12px;font:inherit}.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:18px;overflow:hidden;margin:28px 0}.card{background:var(--panel);padding:22px}.card span{color:var(--muted);font-size:.78rem;text-transform:uppercase}.card strong{display:block;font-size:1.8rem;margin-top:8px}.panel{background:rgba(17,29,49,.94);border:1px solid var(--line);border-radius:18px;padding:22px}.chart{width:100%;height:auto;min-height:260px}.axis{stroke:var(--line);stroke-width:1}.bar{fill:var(--accent)}.bar:hover{fill:#83efc9}.status{color:var(--muted);margin-top:12px}.error{color:#ff9d9d}@media(max-width:620px){.wrap{margin:28px auto}.cards{grid-template-columns:1fr}}
+  </style>
+</head>
+<body><main class="wrap">
+  <header class="top"><div><div class="eyebrow">Compteur Linky</div><h1>Consommation</h1></div><label>Période <select id="days"><option value="7">7 jours</option><option value="30" selected>30 jours</option><option value="90">90 jours</option></select></label></header>
+  <section class="cards"><div class="card"><span>Total</span><strong id="total">—</strong></div><div class="card"><span>Moyenne / jour</span><strong id="average">—</strong></div><div class="card"><span>Maximum</span><strong id="maximum">—</strong></div></section>
+  <section class="panel"><svg id="chart" class="chart" viewBox="0 0 900 320" role="img" aria-label="Consommation quotidienne"></svg><div id="status" class="status">Chargement…</div></section>
+</main><script>
+const svg=document.querySelector('#chart'),status=document.querySelector('#status'),format=n=>new Intl.NumberFormat('fr-FR',{maximumFractionDigits:2}).format(n)+' kWh';
+async function load(){status.className='status';status.textContent='Chargement…';try{const response=await fetch('/api/daily?days='+document.querySelector('#days').value),data=await response.json();if(!response.ok)throw new Error(data.error);const total=data.reduce((s,p)=>s+p.kwh,0),max=Math.max(0,...data.map(p=>p.kwh));document.querySelector('#total').textContent=format(total);document.querySelector('#average').textContent=format(data.length?total/data.length:0);document.querySelector('#maximum').textContent=format(max);svg.innerHTML='<line class="axis" x1="35" y1="285" x2="885" y2="285"/>';const width=850/Math.max(data.length,1);data.forEach((p,i)=>{const height=max?p.kwh/max*245:0,bar=document.createElementNS('http://www.w3.org/2000/svg','rect');bar.setAttribute('class','bar');bar.setAttribute('x',35+i*width+1);bar.setAttribute('y',285-height);bar.setAttribute('width',Math.max(2,width-3));bar.setAttribute('height',height);const title=document.createElementNS('http://www.w3.org/2000/svg','title');title.textContent=p.day+' · '+format(p.kwh);bar.append(title);svg.append(bar)});status.textContent=data.length+' journée'+(data.length>1?'s':'')+' affichée'+(data.length>1?'s':'');}catch(error){status.className='status error';status.textContent=error.message}}
+document.querySelector('#days').addEventListener('change',load);load();
+</script></body></html>
