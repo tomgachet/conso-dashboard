@@ -25,6 +25,9 @@ func main() {
 	}
 
 	const dbPath = "data/conso.duckdb"
+	if err := loadEnvFile(".env"); err != nil {
+		log.Fatal(err)
+	}
 
 	today := time.Now().Truncate(24 * time.Hour)
 	startFlag := flag.String("start", today.AddDate(0, 0, -30).Format(time.DateOnly), "date de début incluse (AAAA-MM-JJ)")

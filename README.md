@@ -15,28 +15,30 @@ Le nom de l'exécutable reste `conso-dashboard`. La version est portée par la r
 
 ## Configuration
 
-```sh
-cp .env.example .env
+Créez un fichier `.env` dans le dossier depuis lequel vous lancerez la commande. Depuis les sources, vous pouvez copier `.env.example`. Renseignez votre token Conso API et le numéro PRM à 14 chiffres de votre compteur :
+
+```dotenv
+CONSO_API_TOKEN=votre-token
+CONSO_API_PRM=12345678901234
 ```
 
-Renseignez dans `.env` le token `CONSO_API_TOKEN` et le numéro de compteur `CONSO_API_PRM` à 14 chiffres.
+Le fichier `.env` est chargé automatiquement au démarrage et reste ignoré par Git. Une variable déjà définie dans le terminal est prioritaire sur la valeur du fichier.
 
 ## Importer les 30 derniers jours
 
 ```sh
-set -a
-. ./.env
-set +a
-go run .
+./conso-dashboard
 ```
+
+Depuis les sources, utilisez `go run .` à la place de `./conso-dashboard`.
 
 Pour choisir une période :
 
 ```sh
-go run . -start 2026-07-01 -end 2026-07-29
+./conso-dashboard -start 2026-07-01 -end 2026-07-29
 ```
 
-La commande découpe automatiquement les périodes pour respecter la limite de Conso API. Elle crée `data/conso.duckdb` et alimente la table `consumption_load_curve`. Un nouvel import met à jour les créneaux existants sans créer de doublons.
+La date de début est incluse et la date de fin est exclue. La commande découpe automatiquement les périodes pour respecter la limite de Conso API. Elle crée `data/conso.duckdb` et alimente la table `consumption_load_curve`. Un nouvel import met à jour les créneaux existants sans créer de doublons.
 
 ## Données stockées
 
