@@ -29,6 +29,17 @@ go run . -start 2026-07-01 -end 2026-07-29
 
 La date de début est incluse et la date de fin est exclue, conformément à Conso API. Une nouvelle exécution met à jour les journées déjà présentes au lieu de créer des doublons.
 
+## Importer les relevés par demi-heure
+
+La courbe de charge doit être activée dans votre espace Enedis. Pour importer les puissances moyennes mesurées sur chaque intervalle :
+
+```sh
+go run . -type load-curve -start 2026-07-01 -end 2026-07-29
+```
+
+Ces mesures sont enregistrées dans `consumption_load_curve`. Une nouvelle exécution met à jour les mêmes horodatages sans créer de doublons.
+Les périodes de plus de 6 jours sont automatiquement découpées pour respecter la limite imposée par l'API Enedis sur les courbes de charge.
+
 ## Schéma initial
 
 La table `daily_consumption` contient :
@@ -40,6 +51,8 @@ La table `daily_consumption` contient :
 - `fetched_at` : date de récupération.
 
 La clé primaire est `(prm, reading_date)`.
+
+La table `consumption_load_curve` contient l'horodatage `reading_at`, la puissance moyenne `value_w` en watts, la durée `interval_length`, le type de mesure `measure_type`, la qualité et la date de récupération. Sa clé primaire est `(prm, reading_at)`.
 
 ## Tests
 
