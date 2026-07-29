@@ -21,6 +21,7 @@ var dashboardFiles embed.FS
 
 type dailyReader interface {
 	DailyConsumption(context.Context, int) ([]storage.DailyConsumption, error)
+	IntervalConsumption(context.Context, time.Time) ([]storage.IntervalConsumption, error)
 }
 
 func runServer(args []string) error {
@@ -43,6 +44,7 @@ func runServer(args []string) error {
 	mux := http.NewServeMux()
 	mux.Handle("GET /", http.FileServerFS(static))
 	mux.HandleFunc("GET /api/daily", dailyHandler(store))
+	mux.HandleFunc("GET /api/intervals", intervalHandler(store))
 
 	server := &http.Server{
 		Addr:              *addr,
@@ -55,6 +57,35 @@ func runServer(args []string) error {
 	}
 	log.Printf("dashboard disponible sur http://%s", displayAddr)
 	return server.ListenAndServe()
+}
+
+func intervalHandler(reader dailyReader) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		day, err := time.Parse(time.DateOnly, r.URL.Query().Get("day"))
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "day doit être une date au format AAAA-MM-JJ"})
+			return
+		}
+		points, err := reader.IntervalConsumption(r.Context(), day)
+		if err != nil {
+			log.Printf("dashboard: %v", err)
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "lecture de DuckDB impossible"})
+			return
+		}
+		type responsePoint struct {
+			Time string  `json:"time"`
+			KWh  float64 `json:"kwh"`
+		}
+		response := make([]responsePoint, 0, len(points))
+		for _, point := range points {
+			label := point.Time.Format("15:04")
+			if point.Time.Hour() == 0 && point.Time.Minute() == 0 && point.Time.Format(time.DateOnly) != day.Format(time.DateOnly) {
+				label = "24:00"
+			}
+			response = append(response, responsePoint{Time: label, KWh: point.KWh})
+		}
+		writeJSON(w, http.StatusOK, response)
+	}
 }
 
 func dailyHandler(reader dailyReader) http.HandlerFunc {

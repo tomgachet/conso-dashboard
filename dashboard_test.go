@@ -19,6 +19,10 @@ func (f *fakeDailyReader) DailyConsumption(_ context.Context, days int) ([]stora
 	return []storage.DailyConsumption{{Day: time.Date(2026, 7, 28, 0, 0, 0, 0, time.UTC), KWh: 21.7}}, nil
 }
 
+func (f *fakeDailyReader) IntervalConsumption(_ context.Context, _ time.Time) ([]storage.IntervalConsumption, error) {
+	return []storage.IntervalConsumption{{Time: time.Date(2026, 7, 29, 0, 0, 0, 0, time.UTC), KWh: 0.125}}, nil
+}
+
 func TestDailyHandler(t *testing.T) {
 	reader := &fakeDailyReader{}
 	recorder := httptest.NewRecorder()
@@ -37,6 +41,25 @@ func TestDailyHandler(t *testing.T) {
 func TestDailyHandlerRejectsInvalidPeriod(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	dailyHandler(&fakeDailyReader{}).ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/api/daily?days=8", nil))
+	if recorder.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d", recorder.Code)
+	}
+}
+
+func TestIntervalHandler(t *testing.T) {
+	recorder := httptest.NewRecorder()
+	intervalHandler(&fakeDailyReader{}).ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/api/intervals?day=2026-07-28", nil))
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status = %d", recorder.Code)
+	}
+	if got := recorder.Body.String(); got != "[{\"time\":\"24:00\",\"kwh\":0.125}]\n" {
+		t.Fatalf("body = %q", got)
+	}
+}
+
+func TestIntervalHandlerRejectsInvalidDay(t *testing.T) {
+	recorder := httptest.NewRecorder()
+	intervalHandler(&fakeDailyReader{}).ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/api/intervals?day=non", nil))
 	if recorder.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d", recorder.Code)
 	}
