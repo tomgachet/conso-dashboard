@@ -21,6 +21,11 @@ func main() {
 		case "version", "--version", "-v":
 			fmt.Printf("conso-dashboard %s\n", version)
 			return
+		case "serve":
+			if err := runServer(os.Args[2:]); err != nil {
+				log.Fatal(err)
+			}
+			return
 		}
 	}
 
