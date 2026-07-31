@@ -1,6 +1,16 @@
 # conso-dashboard
 
-Une commande Go qui récupère la courbe de consommation d'un compteur Linky via [Conso API](https://conso.boris.sh/) et la conserve dans DuckDB.
+Une application Go pour importer et visualiser la consommation électrique d'un compteur Linky.
+
+Elle récupère la courbe de consommation via [Conso API](https://conso.boris.sh/), la conserve localement dans DuckDB et fournit un dashboard web pour explorer les consommations quotidiennes et leur détail intrajournalier.
+
+Le projet reste volontairement simple et autonome :
+
+- un exécutable Go unique pour l'import et le serveur HTTP ;
+- la bibliothèque standard `net/http` pour exposer le dashboard et son API ;
+- une interface en HTML, CSS et JavaScript natifs, embarquée dans l'exécutable ;
+- une base DuckDB locale, embarquée dans l'exécutable et stockée dans un simple fichier, sans installation séparée ;
+- aucun framework frontend, service de base de données ou processus supplémentaire.
 
 ## Installation
 
@@ -15,7 +25,7 @@ Le nom de l'exécutable reste `conso-dashboard`. La version est portée par la r
 
 ## Configuration
 
-Créez un fichier `.env` dans le dossier depuis lequel vous lancerez la commande. Depuis les sources, vous pouvez copier `.env.example`. Renseignez votre token Conso API et le numéro PRM à 14 chiffres de votre compteur :
+Créez un fichier `.env` dans le dossier depuis lequel vous lancerez l'application. Depuis les sources, vous pouvez copier `.env.example`. Renseignez votre token Conso API et le numéro PRM à 14 chiffres de votre compteur :
 
 ```dotenv
 CONSO_API_TOKEN=votre-token
@@ -40,15 +50,22 @@ Pour choisir une période :
 
 La date de début est incluse et la date de fin est exclue. La commande découpe automatiquement les périodes pour respecter la limite de Conso API. Elle crée `data/conso.duckdb` et alimente la table `consumption_load_curve`. Un nouvel import met à jour les créneaux existants sans créer de doublons.
 
-## Dashboard
+## Visualiser les consommations
 
-Lancez le dashboard local après avoir importé des données :
+Après avoir importé des données, lancez le serveur web :
 
 ```sh
 ./conso-dashboard serve
 ```
 
-Ouvrez ensuite <http://localhost:8080>. Le dashboard affiche les consommations quotidiennes sur 7, 30 ou 90 jours. Pour changer l'adresse d'écoute :
+Ouvrez ensuite <http://localhost:8080>. Le dashboard affiche :
+
+- la consommation quotidienne sur 7, 30 ou 90 jours ;
+- la liste des journées, colorée selon leur niveau de consommation ;
+- le détail intrajournalier d'une journée sélectionnée ;
+- le numéro du point de consommation associé aux données.
+
+Les données restent stockées localement dans DuckDB : le dashboard les consulte sans contacter Conso API. Pour changer l'adresse d'écoute :
 
 ```sh
 ./conso-dashboard serve -addr :9090
