@@ -16,6 +16,7 @@ import (
 var version = "dev"
 
 func main() {
+	args := os.Args[1:]
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
 		case "version", "--version", "-v":
@@ -26,63 +27,94 @@ func main() {
 				log.Fatal(err)
 			}
 			return
+		case "fetch":
+			var err error
+			args, err = fetchArgs(os.Args[2:], time.Now())
+			if err != nil {
+				log.Fatal(err)
+			}
 		}
 	}
-
-	const dbPath = "data/conso.duckdb"
-	if err := loadEnvFile(".env"); err != nil {
+	if err := runImport(args, time.Now()); err != nil {
 		log.Fatal(err)
 	}
+}
 
-	today := time.Now().Truncate(24 * time.Hour)
-	startFlag := flag.String("start", today.AddDate(0, 0, -30).Format(time.DateOnly), "date de début incluse (AAAA-MM-JJ)")
-	endFlag := flag.String("end", today.Format(time.DateOnly), "date de fin exclue (AAAA-MM-JJ)")
-	flag.Parse()
+func runImport(args []string, now time.Time) error {
+	const dbPath = "data/conso.duckdb"
+	if err := loadEnvFile(".env"); err != nil {
+		return err
+	}
+
+	today := localDate(now)
+	flags := flag.NewFlagSet("import", flag.ContinueOnError)
+	startFlag := flags.String("start", today.AddDate(0, 0, -30).Format(time.DateOnly), "date de début incluse (AAAA-MM-JJ)")
+	endFlag := flags.String("end", today.Format(time.DateOnly), "date de fin exclue (AAAA-MM-JJ)")
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
 
 	start, err := time.Parse(time.DateOnly, *startFlag)
 	if err != nil {
-		log.Fatalf("date de début invalide: %v", err)
+		return fmt.Errorf("date de début invalide: %w", err)
 	}
 	end, err := time.Parse(time.DateOnly, *endFlag)
 	if err != nil {
-		log.Fatalf("date de fin invalide: %v", err)
+		return fmt.Errorf("date de fin invalide: %w", err)
 	}
 	if !start.Before(end) {
-		log.Fatal("la date de début doit précéder la date de fin")
+		return fmt.Errorf("la date de début doit précéder la date de fin")
 	}
 
 	prm := os.Getenv("CONSO_API_PRM")
 	client, err := conso.NewClient(os.Getenv("CONSO_API_BASE_URL"), os.Getenv("CONSO_API_TOKEN"), prm, nil)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	if err := os.MkdirAll(filepath.Dir(dbPath), 0o755); err != nil {
-		log.Fatalf("création du dossier de données: %v", err)
+		return fmt.Errorf("création du dossier de données: %w", err)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 	store, err := storage.Open(dbPath)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	defer store.Close()
 	if err := store.Migrate(ctx); err != nil {
-		log.Fatal(err)
+		return err
 	}
 	var count int
 	for _, period := range splitPeriod(start, end, 6) {
 		result, err := client.Consumption(ctx, period.start, period.end)
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 		stored, err := store.UpsertConsumptionLoadCurve(ctx, prm, result.Quality, result.IntervalReading)
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 		count += stored
 	}
 	fmt.Printf("%d relevé(s) enregistré(s) dans %s\n", count, dbPath)
+	return nil
+}
+
+func localDate(now time.Time) time.Time {
+	year, month, day := now.Date()
+	return time.Date(year, month, day, 0, 0, 0, 0, now.Location())
+}
+
+func fetchArgs(args []string, now time.Time) ([]string, error) {
+	if len(args) != 1 || args[0] != "yesterday" {
+		return nil, fmt.Errorf("utilisation: conso-dashboard fetch yesterday")
+	}
+	today := localDate(now)
+	return []string{
+		"-start", today.AddDate(0, 0, -1).Format(time.DateOnly),
+		"-end", today.Format(time.DateOnly),
+	}, nil
 }
 
 type period struct {

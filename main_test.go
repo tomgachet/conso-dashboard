@@ -22,3 +22,28 @@ func TestSplitPeriod(t *testing.T) {
 		t.Fatalf("bornes inattendues: %#v", periods)
 	}
 }
+
+func TestFetchYesterdayArgs(t *testing.T) {
+	paris, err := time.LoadLocation("Europe/Paris")
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Date(2026, 8, 1, 0, 30, 0, 0, paris)
+
+	args, err := fetchArgs([]string{"yesterday"}, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"-start", "2026-07-31", "-end", "2026-08-01"}
+	for i := range want {
+		if args[i] != want[i] {
+			t.Fatalf("argument %d = %q, attendu %q", i, args[i], want[i])
+		}
+	}
+}
+
+func TestFetchArgsRejectsUnknownPeriod(t *testing.T) {
+	if _, err := fetchArgs([]string{"tomorrow"}, time.Now()); err == nil {
+		t.Fatal("une période inconnue devrait être refusée")
+	}
+}

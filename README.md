@@ -42,6 +42,14 @@ Le fichier `.env` est chargé automatiquement au démarrage et reste ignoré par
 
 Depuis les sources, utilisez `go run .` à la place de `./conso-dashboard`.
 
+Pour importer uniquement les données de la veille :
+
+```sh
+./conso-dashboard fetch yesterday
+```
+
+Cette commande convient à une future exécution quotidienne automatisée. Elle calcule la veille dans le fuseau horaire local et peut être relancée sans créer de doublons.
+
 Pour choisir une période :
 
 ```sh
