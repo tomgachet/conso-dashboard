@@ -37,10 +37,10 @@ Le fichier `.env` est chargé automatiquement au démarrage et reste ignoré par
 ## Importer les 30 derniers jours
 
 ```sh
-./conso-dashboard
+./conso-dashboard fetch
 ```
 
-Depuis les sources, utilisez `go run .` à la place de `./conso-dashboard`.
+Depuis les sources, utilisez `go run . fetch` à la place de `./conso-dashboard fetch`.
 
 Pour importer uniquement les données de la veille :
 
@@ -53,7 +53,7 @@ Cette commande convient à une future exécution quotidienne automatisée. Elle 
 Pour choisir une période :
 
 ```sh
-./conso-dashboard -start 2026-07-01 -end 2026-07-29
+./conso-dashboard fetch -start 2026-07-01 -end 2026-07-29
 ```
 
 La date de début est incluse et la date de fin est exclue. La commande découpe automatiquement les périodes pour respecter la limite de Conso API. Elle crée `data/conso.duckdb` et alimente la table `consumption_load_curve`. Un nouvel import met à jour les créneaux existants sans créer de doublons.

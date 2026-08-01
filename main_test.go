@@ -42,8 +42,27 @@ func TestFetchYesterdayArgs(t *testing.T) {
 	}
 }
 
+func TestFetchArgsRejectsExtraArgument(t *testing.T) {
+	if _, err := fetchArgs([]string{"yesterday", "extra"}, time.Now()); err == nil {
+		t.Fatal("un argument supplémentaire devrait être refusé")
+	}
+}
+
 func TestFetchArgsRejectsUnknownPeriod(t *testing.T) {
 	if _, err := fetchArgs([]string{"tomorrow"}, time.Now()); err == nil {
 		t.Fatal("une période inconnue devrait être refusée")
+	}
+}
+
+func TestFetchArgsKeepsDateFlags(t *testing.T) {
+	want := []string{"-start", "2026-07-01", "-end", "2026-07-02"}
+	got, err := fetchArgs(want, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("argument %d = %q, attendu %q", i, got[i], want[i])
+		}
 	}
 }

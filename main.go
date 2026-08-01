@@ -16,27 +16,27 @@ import (
 var version = "dev"
 
 func main() {
-	args := os.Args[1:]
-	if len(os.Args) > 1 {
-		switch os.Args[1] {
-		case "version", "--version", "-v":
-			fmt.Printf("conso-dashboard %s\n", version)
-			return
-		case "serve":
-			if err := runServer(os.Args[2:]); err != nil {
-				log.Fatal(err)
-			}
-			return
-		case "fetch":
-			var err error
-			args, err = fetchArgs(os.Args[2:], time.Now())
-			if err != nil {
-				log.Fatal(err)
-			}
-		}
+	if len(os.Args) < 2 {
+		log.Fatal("utilisation: conso-dashboard <fetch|serve|version>")
 	}
-	if err := runImport(args, time.Now()); err != nil {
-		log.Fatal(err)
+
+	switch os.Args[1] {
+	case "version", "--version", "-v":
+		fmt.Printf("conso-dashboard %s\n", version)
+	case "serve":
+		if err := runServer(os.Args[2:]); err != nil {
+			log.Fatal(err)
+		}
+	case "fetch":
+		args, err := fetchArgs(os.Args[2:], time.Now())
+		if err != nil {
+			log.Fatal(err)
+		}
+		if err := runImport(args, time.Now()); err != nil {
+			log.Fatal(err)
+		}
+	default:
+		log.Fatalf("commande inconnue %q; utilisation: conso-dashboard <fetch|serve|version>", os.Args[1])
 	}
 }
 
@@ -52,6 +52,9 @@ func runImport(args []string, now time.Time) error {
 	endFlag := flags.String("end", today.Format(time.DateOnly), "date de fin exclue (AAAA-MM-JJ)")
 	if err := flags.Parse(args); err != nil {
 		return err
+	}
+	if flags.NArg() != 0 {
+		return fmt.Errorf("argument inattendu %q", flags.Arg(0))
 	}
 
 	start, err := time.Parse(time.DateOnly, *startFlag)
@@ -107,7 +110,13 @@ func localDate(now time.Time) time.Time {
 }
 
 func fetchArgs(args []string, now time.Time) ([]string, error) {
-	if len(args) != 1 || args[0] != "yesterday" {
+	if len(args) == 0 || (len(args[0]) > 0 && args[0][0] == '-') {
+		return args, nil
+	}
+	if args[0] != "yesterday" {
+		return nil, fmt.Errorf("période inconnue %q; utilisation: conso-dashboard fetch [yesterday|-start DATE -end DATE]", args[0])
+	}
+	if len(args) != 1 {
 		return nil, fmt.Errorf("utilisation: conso-dashboard fetch yesterday")
 	}
 	today := localDate(now)
