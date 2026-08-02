@@ -9,7 +9,6 @@ import (
 	"io/fs"
 	"log"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
@@ -21,7 +20,7 @@ var dashboardFiles embed.FS
 
 type dailyReader interface {
 	PRM(context.Context) (string, error)
-	DailyConsumption(context.Context, int) ([]storage.DailyConsumption, error)
+	DailyConsumption(context.Context, time.Time) ([]storage.DailyConsumption, error)
 	IntervalConsumption(context.Context, time.Time) ([]storage.IntervalConsumption, error)
 }
 
@@ -104,16 +103,16 @@ func intervalHandler(reader dailyReader) http.HandlerFunc {
 
 func dailyHandler(reader dailyReader) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		days := 30
-		if value := r.URL.Query().Get("days"); value != "" {
-			parsed, err := strconv.Atoi(value)
-			if err != nil || (parsed != 7 && parsed != 30 && parsed != 90) {
-				writeJSON(w, http.StatusBadRequest, map[string]string{"error": "days doit valoir 7, 30 ou 90"})
-				return
-			}
-			days = parsed
+		period := r.URL.Query().Get("period")
+		if period == "" {
+			period = "month"
 		}
-		points, err := reader.DailyConsumption(r.Context(), days)
+		start, ok := periodStart(time.Now(), period)
+		if !ok {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "period doit valoir week, month ou year"})
+			return
+		}
+		points, err := reader.DailyConsumption(r.Context(), start)
 		if err != nil {
 			log.Printf("dashboard: %v", err)
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "lecture de DuckDB impossible"})
@@ -129,6 +128,22 @@ func dailyHandler(reader dailyReader) http.HandlerFunc {
 		}
 		writeJSON(w, http.StatusOK, response)
 	}
+}
+
+func periodStart(now time.Time, period string) (time.Time, bool) {
+	year, month, day := now.Date()
+	start := time.Date(year, month, day, 0, 0, 0, 0, now.Location())
+	switch period {
+	case "week":
+		start = start.AddDate(0, 0, -int((start.Weekday()+6)%7))
+	case "month":
+		start = time.Date(year, month, 1, 0, 0, 0, 0, now.Location())
+	case "year":
+		start = time.Date(year, time.January, 1, 0, 0, 0, 0, now.Location())
+	default:
+		return time.Time{}, false
+	}
+	return start, true
 }
 
 func writeJSON(w http.ResponseWriter, status int, value any) {

@@ -51,7 +51,7 @@ func (s *Store) PRM(ctx context.Context) (string, error) {
 	return prm, nil
 }
 
-func (s *Store) DailyConsumption(ctx context.Context, days int) ([]DailyConsumption, error) {
+func (s *Store) DailyConsumption(ctx context.Context, start time.Time) ([]DailyConsumption, error) {
 	rows, err := s.db.QueryContext(ctx, `
 		WITH daily AS (
 			SELECT
@@ -65,11 +65,10 @@ func (s *Store) DailyConsumption(ctx context.Context, days int) ([]DailyConsumpt
 			GROUP BY day
 		)
 		SELECT day, consumption_kwh
-		FROM (
-			SELECT day, consumption_kwh FROM daily ORDER BY day DESC LIMIT ?
-		)
+		FROM daily
+		WHERE day >= CAST(? AS DATE)
 		ORDER BY day
-	`, days)
+	`, start.Format(time.DateOnly))
 	if err != nil {
 		return nil, fmt.Errorf("lecture des consommations quotidiennes: %w", err)
 	}
