@@ -68,7 +68,7 @@ Après avoir importé des données, lancez le serveur web :
 
 Ouvrez ensuite <http://localhost:8080>. Le dashboard affiche :
 
-- la consommation quotidienne sur 7, 30 ou 90 jours ;
+- la consommation quotidienne sur la semaine, le mois ou l'année en cours ;
 - la liste des journées, colorée selon leur niveau de consommation ;
 - le détail intrajournalier d'une journée sélectionnée ;
 - le numéro du point de consommation associé aux données.
