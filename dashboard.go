@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -104,6 +105,25 @@ func intervalHandler(reader dailyReader) http.HandlerFunc {
 func dailyHandler(reader dailyReader) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		period := r.URL.Query().Get("period")
+		yearValue := r.URL.Query().Get("year")
+		var end time.Time
+		if yearValue != "" {
+			year, err := strconv.Atoi(yearValue)
+			if err != nil || year < 2000 || year > 9999 {
+				writeJSON(w, http.StatusBadRequest, map[string]string{"error": "year doit être une année valide"})
+				return
+			}
+			start := time.Date(year, time.January, 1, 0, 0, 0, 0, time.Local)
+			end = start.AddDate(1, 0, 0)
+			points, err := reader.DailyConsumption(r.Context(), start)
+			if err != nil {
+				log.Printf("dashboard: %v", err)
+				writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "lecture de DuckDB impossible"})
+				return
+			}
+			writeDailyResponse(w, points, start, end)
+			return
+		}
 		if period == "" {
 			period = "month"
 		}
@@ -118,16 +138,26 @@ func dailyHandler(reader dailyReader) http.HandlerFunc {
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "lecture de DuckDB impossible"})
 			return
 		}
-		type responsePoint struct {
-			Day string  `json:"day"`
-			KWh float64 `json:"kwh"`
-		}
-		response := make([]responsePoint, 0, len(points))
-		for _, point := range points {
-			response = append(response, responsePoint{Day: point.Day.Format(time.DateOnly), KWh: point.KWh})
-		}
-		writeJSON(w, http.StatusOK, response)
+		writeDailyResponse(w, points, time.Time{}, end)
 	}
+}
+
+func writeDailyResponse(w http.ResponseWriter, points []storage.DailyConsumption, start, end time.Time) {
+	type responsePoint struct {
+		Day string  `json:"day"`
+		KWh float64 `json:"kwh"`
+	}
+	response := make([]responsePoint, 0, len(points))
+	for _, point := range points {
+		if !start.IsZero() && point.Day.Before(start) {
+			continue
+		}
+		if !end.IsZero() && !point.Day.Before(end) {
+			break
+		}
+		response = append(response, responsePoint{Day: point.Day.Format(time.DateOnly), KWh: point.KWh})
+	}
+	writeJSON(w, http.StatusOK, response)
 }
 
 func periodStart(now time.Time, period string) (time.Time, bool) {

@@ -11,7 +11,8 @@ import (
 )
 
 type fakeDailyReader struct {
-	start time.Time
+	start  time.Time
+	points []storage.DailyConsumption
 }
 
 func (f *fakeDailyReader) PRM(_ context.Context) (string, error) {
@@ -20,6 +21,9 @@ func (f *fakeDailyReader) PRM(_ context.Context) (string, error) {
 
 func (f *fakeDailyReader) DailyConsumption(_ context.Context, start time.Time) ([]storage.DailyConsumption, error) {
 	f.start = start
+	if f.points != nil {
+		return f.points, nil
+	}
 	return []storage.DailyConsumption{{Day: time.Date(2026, 7, 28, 0, 0, 0, 0, time.UTC), KWh: 21.7}}, nil
 }
 
@@ -56,6 +60,33 @@ func TestInfoHandler(t *testing.T) {
 func TestDailyHandlerRejectsInvalidPeriod(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	dailyHandler(&fakeDailyReader{}).ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/api/daily?period=quarter", nil))
+	if recorder.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d", recorder.Code)
+	}
+}
+
+func TestDailyHandlerFiltersSelectedYear(t *testing.T) {
+	reader := &fakeDailyReader{points: []storage.DailyConsumption{
+		{Day: time.Date(2025, 12, 31, 0, 0, 0, 0, time.UTC), KWh: 12},
+		{Day: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC), KWh: 13},
+		{Day: time.Date(2027, 1, 1, 0, 0, 0, 0, time.UTC), KWh: 14},
+	}}
+	recorder := httptest.NewRecorder()
+	dailyHandler(reader).ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/api/daily?year=2026", nil))
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status = %d", recorder.Code)
+	}
+	if got := reader.start.Format(time.DateOnly); got != "2026-01-01" {
+		t.Fatalf("start = %s", got)
+	}
+	if got := recorder.Body.String(); got != "[{\"day\":\"2026-01-01\",\"kwh\":13}]\n" {
+		t.Fatalf("body = %q", got)
+	}
+}
+
+func TestDailyHandlerRejectsInvalidYear(t *testing.T) {
+	recorder := httptest.NewRecorder()
+	dailyHandler(&fakeDailyReader{}).ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/api/daily?year=hier", nil))
 	if recorder.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d", recorder.Code)
 	}
