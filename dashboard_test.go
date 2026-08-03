@@ -59,7 +59,7 @@ func TestInfoHandler(t *testing.T) {
 
 func TestDailyHandlerRejectsInvalidPeriod(t *testing.T) {
 	recorder := httptest.NewRecorder()
-	dailyHandler(&fakeDailyReader{}).ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/api/daily?period=quarter", nil))
+	dailyHandler(&fakeDailyReader{}).ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/api/daily?period=semester", nil))
 	if recorder.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d", recorder.Code)
 	}
@@ -95,7 +95,7 @@ func TestDailyHandlerRejectsInvalidYear(t *testing.T) {
 func TestPeriodStart(t *testing.T) {
 	paris := time.FixedZone("Europe/Paris", 2*60*60)
 	now := time.Date(2026, 8, 2, 14, 30, 0, 0, paris)
-	tests := map[string]string{"week": "2026-07-27", "month": "2026-08-01", "year": "2026-01-01"}
+	tests := map[string]string{"week": "2026-07-27", "month": "2026-08-01", "quarter": "2026-07-01", "year": "2026-01-01"}
 	for period, want := range tests {
 		start, ok := periodStart(now, period)
 		if !ok || start.Format(time.DateOnly) != want {

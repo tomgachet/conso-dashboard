@@ -129,7 +129,7 @@ func dailyHandler(reader dailyReader) http.HandlerFunc {
 		}
 		start, ok := periodStart(time.Now(), period)
 		if !ok {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "period doit valoir week, month ou year"})
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "period doit valoir week, month, quarter ou year"})
 			return
 		}
 		points, err := reader.DailyConsumption(r.Context(), start)
@@ -168,6 +168,9 @@ func periodStart(now time.Time, period string) (time.Time, bool) {
 		start = start.AddDate(0, 0, -int((start.Weekday()+6)%7))
 	case "month":
 		start = time.Date(year, month, 1, 0, 0, 0, 0, now.Location())
+	case "quarter":
+		quarterMonth := time.Month((int(month)-1)/3*3 + 1)
+		start = time.Date(year, quarterMonth, 1, 0, 0, 0, 0, now.Location())
 	case "year":
 		start = time.Date(year, time.January, 1, 0, 0, 0, 0, now.Location())
 	default:
