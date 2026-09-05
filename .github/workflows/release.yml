@@ -27,7 +27,9 @@ jobs:
         run: |
           go test ./...
           bash -n deploy/systemd/conso-dashboard-ctl
+          bash -n install.sh
           python3 tests/systemd_ctl_test.py
+          python3 tests/install_test.py
 
       - name: Build release archive
         env:
@@ -36,10 +38,10 @@ jobs:
           set -euo pipefail
           mkdir -p dist/linux-amd64
           CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags "-s -w -X main.version=${VERSION}" -o dist/linux-amd64/conso-dashboard .
-          cp LICENSE README.md .env.example dist/linux-amd64/
+          cp LICENSE README.md .env.example install.sh dist/linux-amd64/
           mkdir -p dist/linux-amd64/deploy
           cp -R deploy/systemd dist/linux-amd64/deploy/
-          tar -C dist/linux-amd64 -czf dist/conso-dashboard-linux-amd64.tar.gz conso-dashboard LICENSE README.md .env.example deploy
+          tar -C dist/linux-amd64 -czf dist/conso-dashboard-linux-amd64.tar.gz conso-dashboard LICENSE README.md .env.example install.sh deploy
           cd dist
           sha256sum conso-dashboard-linux-amd64.tar.gz > SHA256SUMS
 

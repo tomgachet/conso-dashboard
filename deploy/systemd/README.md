@@ -2,7 +2,35 @@
 
 Le dashboard démarre au boot et redémarre en cas d'échec. Un timer importe les données de la veille chaque jour à **8 h, heure de Paris**, avec `fetch yesterday`. Prérequis : Linux avec **systemd 249 ou supérieur** (pour `OnSuccess=`), et l'archive de release extraite dans le dossier courant. Depuis les sources, placer le binaire compilé dans ce dossier.
 
-## Installation
+## Installation automatique sur Debian / Ubuntu
+
+Depuis le dossier de l'archive extraite ou des sources :
+
+```sh
+./install.sh
+```
+
+Le script demande les droits sudo, vérifie systemd (249 minimum), installe les prérequis avec APT et utilise le binaire fourni. Depuis les sources, il télécharge la dernière révision stable Go 1.26 pour amd64 ou arm64 depuis `go.dev`, vérifie son SHA-256 puis compile dans un dossier temporaire. L'installation Go de la machine est conservée. Un accès Internet est nécessaire pour APT et, depuis les sources, pour Go et ses modules.
+
+Lors de la première installation, il demande le token (saisie masquée) et le PRM, crée le compte dédié et un `.env` protégé, installe les unités et la commande d'administration, puis importe les 30 derniers jours. Après réussite, il active le dashboard et le timer quotidien à 8 h. Le dashboard écoute sur `127.0.0.1:8080` ; pour une machine distante, utiliser un tunnel SSH ou un reverse proxy.
+
+Pour installer directement depuis la branche de développement actuelle (Git et une clé SSH GitHub doivent être disponibles) :
+
+```sh
+git clone --branch feat/systemd git@github.com:tomgachet/conso-dashboard.git
+cd conso-dashboard
+./install.sh
+```
+
+Une nouvelle exécution conserve le `.env` et les données, remplace les fichiers livrés et refait l'import initial sans doublons. Elle attend un import quotidien en cours et refuse de remplacer les fichiers pendant un import manuel. Les services précédemment actifs sont relancés en cas d'échec ; lors d'une première installation, un échec d'import empêche l'activation automatique. Corriger au besoin la configuration avec `sudoedit /var/lib/conso-dashboard/.env` puis relancer le script. Les personnalisations systemd doivent être placées dans des drop-ins avec `systemctl edit`.
+
+Les logs sont capturés par journald avec la politique de rétention de la machine ; l'installateur ne modifie pas la rétention globale. Pour reprendre un historique plus long après installation :
+
+```sh
+sudo conso-dashboard-ctl fetch -start 2026-01-01 -end 2026-09-01
+```
+
+## Installation manuelle
 
 Créer un compte dédié, installer le binaire et renseigner le token et le PRM :
 

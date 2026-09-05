@@ -21,6 +21,14 @@ tar -xzf conso-dashboard-linux-amd64.tar.gz
 ./conso-dashboard --version
 ```
 
+Sur Debian / Ubuntu avec systemd, lancer ensuite l'installateur pour configurer le token et le PRM, remplir la base et activer le dashboard et l'import quotidien :
+
+```sh
+./install.sh
+```
+
+L'installateur fonctionne aussi depuis les sources et prend en charge la compilation. Voir le [guide d'installation automatique](deploy/systemd/README.md#installation-automatique-sur-debian--ubuntu).
+
 Le nom de l'exécutable reste `conso-dashboard`. La version est portée par la release et le nom de l'archive.
 
 Pour un démarrage automatique sous Linux, consultez le [guide systemd](deploy/systemd/README.md) : installation du service, remplissage initial avec `conso-dashboard-ctl fetch`, import automatique de la veille à 8 h (Europe/Paris) et gestion des logs avec journald.
