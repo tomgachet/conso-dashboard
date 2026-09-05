@@ -10,7 +10,7 @@ StateDirectory=conso-dashboard
 StateDirectoryMode=0750
 WorkingDirectory=/var/lib/conso-dashboard
 Environment=TZ=Europe/Paris
-ExecStart=/usr/local/bin/conso-dashboard serve -addr 127.0.0.1:8080
+ExecStart=/usr/local/bin/conso-dashboard serve -addr 127.0.0.1:3457
 Restart=on-failure
 RestartSec=5s
 UMask=0027

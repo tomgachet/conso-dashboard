@@ -39,7 +39,7 @@ L'installateur demande les droits `sudo`, votre **token Conso API** (saisie masq
 - démarrer le dashboard et l'activer au démarrage de la machine ;
 - programmer l'import de la veille chaque jour à **8 h, heure de Paris**.
 
-Après réussite, le dashboard est accessible sur <http://127.0.0.1:8080> depuis la machine installée. Pour un serveur distant, utilisez un tunnel SSH ou un reverse proxy.
+Après réussite, le dashboard est accessible sur <http://127.0.0.1:3457> depuis la machine installée. Pour un serveur distant, utilisez un tunnel SSH ou un reverse proxy.
 
 ### Importer davantage de données
 
@@ -94,10 +94,10 @@ Importez les 30 derniers jours, puis démarrez le serveur :
 
 ```sh
 ./conso-dashboard fetch
-./conso-dashboard serve -addr 127.0.0.1:8080
+./conso-dashboard serve -addr 127.0.0.1:3457
 ```
 
-Ouvrez <http://localhost:8080>. La base est créée dans `data/conso.duckdb` et les logs s'affichent dans le terminal. Utilisez **Ctrl+C** pour arrêter le serveur.
+Ouvrez <http://localhost:3457>. La base est créée dans `data/conso.duckdb` et les logs s'affichent dans le terminal. Utilisez **Ctrl+C** pour arrêter le serveur.
 
 ### Refaire un import
 
@@ -117,10 +117,10 @@ Arrêtez d'abord le serveur avec `Ctrl+C` pour libérer DuckDB, puis choisissez 
 Un nouvel import met à jour les créneaux existants sans créer de doublons. Relancez ensuite le dashboard :
 
 ```sh
-./conso-dashboard serve -addr 127.0.0.1:8080
+./conso-dashboard serve -addr 127.0.0.1:3457
 ```
 
-Pour changer le port, remplacez `127.0.0.1:8080` par `127.0.0.1:9090`.
+Pour changer le port, remplacez `127.0.0.1:3457` par `127.0.0.1:9090`.
 
 ## Fonctionnalités du dashboard
 

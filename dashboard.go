@@ -27,7 +27,7 @@ type dailyReader interface {
 
 func runServer(args []string) error {
 	flags := flag.NewFlagSet("serve", flag.ContinueOnError)
-	addr := flags.String("addr", ":8080", "adresse d'écoute HTTP")
+	addr := flags.String("addr", ":3457", "adresse d'écoute HTTP")
 	if err := flags.Parse(args); err != nil {
 		return err
 	}

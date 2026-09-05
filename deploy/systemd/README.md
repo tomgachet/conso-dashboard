@@ -12,7 +12,7 @@ Depuis le dossier de l'archive extraite ou des sources :
 
 Le script demande les droits sudo, vérifie systemd (249 minimum), installe les prérequis avec APT et utilise le binaire fourni. Depuis les sources, il télécharge la dernière révision stable Go 1.26 pour amd64 ou arm64 depuis `go.dev`, vérifie son SHA-256 puis compile dans un dossier temporaire. L'installation Go de la machine est conservée. Un accès Internet est nécessaire pour APT et, depuis les sources, pour Go et ses modules.
 
-Lors de la première installation, il demande le token (saisie masquée) et le PRM, crée le compte dédié et un `.env` protégé, installe les unités et la commande d'administration, puis importe les 30 derniers jours. Après réussite, il active le dashboard et le timer quotidien à 8 h. Le dashboard écoute sur `127.0.0.1:8080` ; pour une machine distante, utiliser un tunnel SSH ou un reverse proxy.
+Lors de la première installation, il demande le token (saisie masquée) et le PRM, crée le compte dédié et un `.env` protégé, installe les unités et la commande d'administration, puis importe les 30 derniers jours. Après réussite, il active le dashboard et le timer quotidien à 8 h. Le dashboard écoute sur `127.0.0.1:3457` ; pour une machine distante, utiliser un tunnel SSH ou un reverse proxy.
 
 Pour installer directement depuis la branche de développement actuelle (Git et une clé SSH GitHub doivent être disponibles) :
 
@@ -64,17 +64,17 @@ sudo systemctl enable --now conso-dashboard.service
 sudo systemctl enable --now conso-dashboard-fetch.timer
 sudo systemctl list-timers conso-dashboard-fetch.timer
 sudo systemctl status conso-dashboard.service
-curl --fail http://127.0.0.1:8080/api/info
+curl --fail http://127.0.0.1:3457/api/info
 ```
 
 Les données sont stockées dans `/var/lib/conso-dashboard/data/conso.duckdb`. Pour reprendre une base existante, arrêter ses utilisateurs, copier le dossier `data` complet et donner sa propriété au compte `conso-dashboard` avant de démarrer.
 
-L'écoute est limitée à `127.0.0.1:8080`, pour un accès local ou via un reverse proxy. Pour écouter sur le réseau, utiliser `sudo systemctl edit conso-dashboard.service` :
+L'écoute est limitée à `127.0.0.1:3457`, pour un accès local ou via un reverse proxy. Pour écouter sur le réseau, utiliser `sudo systemctl edit conso-dashboard.service` :
 
 ```ini
 [Service]
 ExecStart=
-ExecStart=/usr/local/bin/conso-dashboard serve -addr :8080
+ExecStart=/usr/local/bin/conso-dashboard serve -addr :3457
 ```
 
 Puis lancer `sudo systemctl restart conso-dashboard.service`. Le dashboard n'intègre pas d'authentification ; adapter l'accès réseau aux données personnelles affichées.

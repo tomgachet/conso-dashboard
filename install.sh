@@ -161,7 +161,7 @@ start_installation() {
     restore_timer=0
     systemctl is-active --quiet "$server"
     systemctl is-active --quiet "$timer"
-    echo 'Installation terminée. Dashboard : http://127.0.0.1:8080'
+    echo 'Installation terminée. Dashboard : http://127.0.0.1:3457'
     echo 'Import de la veille : chaque jour à 8 h (Europe/Paris).'
     echo 'Historique : sudo conso-dashboard-ctl fetch -start AAAA-MM-JJ -end AAAA-MM-JJ'
     echo 'Logs : sudo journalctl -u conso-dashboard.service -u conso-dashboard-fetch.service -u conso-dashboard-manual-fetch.service -f'
