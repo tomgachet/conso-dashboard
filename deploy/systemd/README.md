@@ -15,6 +15,7 @@ sudoedit /var/lib/conso-dashboard/.env
 sudo install -m 0644 deploy/systemd/conso-dashboard.service /etc/systemd/system/conso-dashboard.service
 sudo install -m 0644 deploy/systemd/conso-dashboard-fetch.service /etc/systemd/system/conso-dashboard-fetch.service
 sudo install -m 0644 deploy/systemd/conso-dashboard-fetch.timer /etc/systemd/system/conso-dashboard-fetch.timer
+sudo install -m 0755 deploy/systemd/conso-dashboard-ctl /usr/local/bin/conso-dashboard-ctl
 sudo systemctl daemon-reload
 ```
 
@@ -23,8 +24,10 @@ Pour une réinstallation, conserver le compte et le `.env` existants. Le serveur
 Importer les données avant de démarrer le service :
 
 ```sh
-sudo -u conso-dashboard sh -c 'cd /var/lib/conso-dashboard && TZ=Europe/Paris /usr/local/bin/conso-dashboard fetch'
+sudo conso-dashboard-ctl fetch
 ```
+
+Pour remplir une période historique dès l’installation, utiliser par exemple `sudo conso-dashboard-ctl fetch -start 2026-01-01 -end 2026-09-01` (début inclus, fin exclue). Les mêmes commandes fonctionnent après activation du dashboard.
 
 Après un import réussi :
 
@@ -66,9 +69,28 @@ sudo systemctl status conso-dashboard.service
 
 Ne pas lancer directement `fetch` pendant que le serveur tourne. Démarrer manuellement le serveur pendant l'import annule celui-ci, les deux services étant exclusifs.
 
-## Maintenance et import d'une période
+## Import manuel après installation
 
-Pour une sauvegarde, une mise à jour ou un import manuel sur une autre période, arrêter le timer, attendre la fin de l'import éventuel, puis arrêter le dashboard :
+Depuis n'importe quel dossier :
+
+```sh
+# Les 30 derniers jours (remplissage initial ou rattrapage)
+sudo conso-dashboard-ctl fetch
+
+# La veille
+sudo conso-dashboard-ctl fetch yesterday
+
+# Une période précise : début inclus, fin exclue
+sudo conso-dashboard-ctl fetch -start 2026-01-01 -end 2026-09-01
+```
+
+La commande suspend le timer, attend la fin d'un import quotidien éventuel, arrête le dashboard et lance l'import sous le compte dédié. Elle rétablit ensuite les services qui étaient actifs, même si l'import échoue ou si la commande reçoit Ctrl+C. Lors du remplissage initial, le dashboard et le timer restent arrêtés jusqu'à leur activation explicite. Un second import manuel simultané est refusé.
+
+Les logs sont accessibles avec `sudo journalctl -u conso-dashboard-manual-fetch.service --since today`. Le code de retour est non nul en cas d'échec. Comme l'import CLI actuel, chaque appel est limité à cinq minutes côté application (six minutes côté systemd) ; découper un historique très long en plusieurs appels si cette limite est atteinte. Les imports peuvent être relancés sans doublons.
+
+## Maintenance et sauvegarde
+
+Pour une sauvegarde ou une mise à jour, arrêter le timer, attendre la fin de l'import éventuel, puis arrêter le dashboard :
 
 ```sh
 sudo systemctl stop conso-dashboard-fetch.timer
@@ -79,13 +101,12 @@ Attendre que l'import ne soit plus `activating`, `active` ou `deactivating`, et 
 
 ```sh
 sudo systemctl stop conso-dashboard.service
-# Exemple de rattrapage des 30 derniers jours
-sudo -u conso-dashboard sh -c 'cd /var/lib/conso-dashboard && TZ=Europe/Paris /usr/local/bin/conso-dashboard fetch'
+# Effectuer ici la sauvegarde du dossier data complet
 sudo systemctl start conso-dashboard.service
 sudo systemctl start conso-dashboard-fetch.timer
 ```
 
-Pour une sauvegarde, copier le dossier `data` complet à la place de l'import, service arrêté. Relancer le dashboard et le timer même si l'import manuel échoue. Arrêter uniquement le dashboard ne suffit pas pour une maintenance : le prochain import programmé le redémarrerait.
+Copier le dossier `data` complet, service arrêté, puis relancer le dashboard et le timer. Arrêter uniquement le dashboard ne suffit pas pour une maintenance : le prochain import programmé le redémarrerait.
 
 ## Logs
 
@@ -134,6 +155,7 @@ Suivre la procédure de maintenance ci-dessus pour arrêter le timer et attendre
 ```sh
 sudo systemctl stop conso-dashboard.service
 sudo install -m 0755 conso-dashboard /usr/local/bin/conso-dashboard
+sudo install -m 0755 deploy/systemd/conso-dashboard-ctl /usr/local/bin/conso-dashboard-ctl
 sudo systemctl start conso-dashboard.service
 sudo systemctl start conso-dashboard-fetch.timer
 /usr/local/bin/conso-dashboard --version

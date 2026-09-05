@@ -24,7 +24,10 @@ jobs:
           cache: true
 
       - name: Run tests
-        run: go test ./...
+        run: |
+          go test ./...
+          bash -n deploy/systemd/conso-dashboard-ctl
+          python3 tests/systemd_ctl_test.py
 
       - name: Build release archive
         env:

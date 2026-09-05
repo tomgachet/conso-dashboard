@@ -1,0 +1,102 @@
+#!/bin/bash
+set -euo pipefail
+
+usage() {
+    echo 'Utilisation : sudo conso-dashboard-ctl fetch [yesterday | -start AAAA-MM-JJ -end AAAA-MM-JJ]'
+}
+if [[ ${1:-} == --help || ${1:-} == -h ]]; then
+    usage
+    exit 0
+fi
+if [[ ${1:-} != fetch ]]; then
+    usage >&2
+    exit 2
+fi
+shift
+if (( EUID != 0 )); then
+    echo 'Cette commande nécessite sudo.' >&2
+    exit 1
+fi
+
+# Un seul opérateur à la fois ; le service transitoire ne reçoit pas le verrou.
+exec 9>/run/lock/conso-dashboard-ctl.lock
+flock -n 9 || { echo 'Un import manuel est déjà en cours.' >&2; exit 1; }
+server=conso-dashboard.service
+timer=conso-dashboard-fetch.timer
+daily=conso-dashboard-fetch.service
+manual=conso-dashboard-manual-fetch.service
+active() {
+    local state
+    state=$(systemctl show --property=ActiveState --value "$1") || {
+        echo "Impossible de lire l’état de $1." >&2
+        exit 1
+    }
+    [[ $state == active || $state == activating || $state == deactivating || $state == reloading ]]
+}
+for unit in "$server" "$timer" "$daily"; do
+    [[ $(systemctl show --property=LoadState --value "$unit") == loaded ]] || {
+        echo "Unité absente : $unit. Terminer l'installation systemd." >&2
+        exit 1
+    }
+done
+restore_timer=0
+restore_server=0
+manual_started=0
+active "$timer" && restore_timer=1
+active "$server" && restore_server=1
+# L'import quotidien a arrêté le serveur mais prévoit de le relancer.
+active "$daily" && restore_server=1
+cleanup() {
+    local result=$?
+    trap - EXIT INT TERM HUP
+    set +e
+    if (( manual_started )); then
+        # systemd-run peut avoir été interrompu alors que l'import tourne encore.
+        if active "$manual"; then
+            systemctl stop "$manual" || result=1
+        fi
+    fi
+    if (( restore_server )); then
+        systemctl start "$server" || result=1
+    fi
+    if (( restore_timer )); then
+        systemctl start "$timer" || result=1
+    fi
+    exit "$result"
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+trap 'exit 129' HUP
+systemctl stop "$timer"
+active "$daily" && restore_server=1
+# Ne pas interrompre un import quotidien en cours.
+for (( attempt=0; ; attempt++ )); do
+    if ! active "$daily"; then
+        break
+    fi
+    if (( attempt >= 420 )); then
+        echo "L'import quotidien ne s'est pas terminé ; réessayer plus tard." >&2
+        restore_server=0 # Laisser cet import gérer son propre redémarrage.
+        exit 1
+    fi
+    if (( attempt == 0 )); then
+        echo "Attente de la fin de l'import quotidien…"
+    fi
+    sleep 1
+done
+systemctl stop "$server"
+manual_started=1
+echo "Import en cours. Logs : journalctl -u $manual -f"
+# Les arguments sont transmis séparément, sans évaluation par un shell.
+systemd-run --unit="$manual" --wait --collect --service-type=oneshot \
+    --property=User=conso-dashboard --property=Group=conso-dashboard \
+    --property=WorkingDirectory=/var/lib/conso-dashboard \
+    --property=Environment=TZ=Europe/Paris \
+    --property=Conflicts="$server" --property=Before="$server" \
+    --property=TimeoutStartSec=6min --property=UMask=0027 \
+    --property=NoNewPrivileges=true --property=PrivateTmp=true \
+    --property=ProtectSystem=strict --property=ProtectHome=true \
+    --property=ReadWritePaths=/var/lib/conso-dashboard \
+    --property=StandardOutput=journal --property=StandardError=journal \
+    /usr/local/bin/conso-dashboard fetch "$@" 9>&-
