@@ -12,82 +12,126 @@ Le projet reste volontairement simple et autonome :
 - une base DuckDB locale, embarquée dans l'exécutable et stockée dans un simple fichier, sans installation séparée ;
 - aucun framework frontend, service de base de données ou processus supplémentaire.
 
-## Installation
+## Choisir un mode d'utilisation
 
-Téléchargez l'archive Linux amd64 depuis la [dernière release](https://github.com/tomgachet/conso-dashboard/releases/latest), puis extrayez-la :
+- [Installation automatique avec systemd](#installation-automatique-avec-systemd) : pour faire tourner le dashboard en continu, avec import quotidien automatique.
+- [Tester sans installation](#tester-sans-installation) : pour lancer le dashboard manuellement dans un dossier local.
+
+Les deux parcours utilisent l'archive Linux amd64 de la [dernière release](https://github.com/tomgachet/conso-dashboard/releases/latest), avec le binaire déjà compilé. Aucun clonage Git ni installation de Go n'est nécessaire.
+
+## Installation automatique avec systemd
+
+Consultez le [guide complet d’installation systemd](deploy/systemd/README.md) pour les détails de configuration et d’administration.
+
+Sur **Debian / Ubuntu avec systemd 249 ou supérieur**, téléchargez l'archive et lancez l'installateur :
 
 ```sh
+curl -fLO https://github.com/tomgachet/conso-dashboard/releases/latest/download/conso-dashboard-linux-amd64.tar.gz
 tar -xzf conso-dashboard-linux-amd64.tar.gz
-./conso-dashboard --version
-```
-
-Sur Debian / Ubuntu avec systemd, lancer ensuite l'installateur pour configurer le token et le PRM, remplir la base et activer le dashboard et l'import quotidien :
-
-```sh
 ./install.sh
 ```
 
-L'installateur fonctionne aussi depuis les sources et prend en charge la compilation. Voir le [guide d'installation automatique](deploy/systemd/README.md#installation-automatique-sur-debian--ubuntu).
+L'installateur demande les droits `sudo`, votre **token Conso API** (saisie masquée) et le **PRM à 14 chiffres** de votre compteur. Il s'occupe ensuite de :
 
-Le nom de l'exécutable reste `conso-dashboard`. La version est portée par la release et le nom de l'archive.
+- créer le compte système et installer les fichiers ;
+- enregistrer la configuration dans `/var/lib/conso-dashboard/.env` ;
+- importer les 30 derniers jours dans `/var/lib/conso-dashboard/data/conso.duckdb` ;
+- démarrer le dashboard et l'activer au démarrage de la machine ;
+- programmer l'import de la veille chaque jour à **8 h, heure de Paris**.
 
-Pour un démarrage automatique sous Linux, consultez le [guide systemd](deploy/systemd/README.md) : installation du service, remplissage initial avec `conso-dashboard-ctl fetch`, import automatique de la veille à 8 h (Europe/Paris) et gestion des logs avec journald.
+Après réussite, le dashboard est accessible sur <http://127.0.0.1:8080> depuis la machine installée. Pour un serveur distant, utilisez un tunnel SSH ou un reverse proxy.
 
-## Configuration
+### Importer davantage de données
 
-Créez un fichier `.env` dans le dossier depuis lequel vous lancerez l'application. Depuis les sources, vous pouvez copier `.env.example`. Renseignez votre token Conso API et le numéro PRM à 14 chiffres de votre compteur :
+Une fois le service installé, utilisez la commande d'administration depuis n'importe quel dossier :
+
+```sh
+sudo conso-dashboard-ctl fetch -start 2026-01-01 -end 2026-09-01
+```
+
+La date de début est incluse et la date de fin est exclue. Cette commande gère l'arrêt du dashboard pendant l'import et sa remise en service.
+
+### Consulter les logs
+
+```sh
+# Dashboard
+sudo journalctl -u conso-dashboard.service -f
+
+# Imports quotidiens
+sudo journalctl -u conso-dashboard-fetch.service --since today
+
+# Imports manuels
+sudo journalctl -u conso-dashboard-manual-fetch.service --since today
+```
+
+Le [guide systemd](deploy/systemd/README.md) détaille l'accès réseau, la rétention des logs, les sauvegardes et les mises à jour.
+
+## Tester sans installation
+
+Ce parcours lance le binaire directement, sans `sudo`, service systemd ni import automatique. La configuration et les données restent dans le dossier depuis lequel vous lancez les commandes.
+
+### Télécharger et configurer
+
+```sh
+curl -fLO https://github.com/tomgachet/conso-dashboard/releases/latest/download/conso-dashboard-linux-amd64.tar.gz
+tar -xzf conso-dashboard-linux-amd64.tar.gz
+cp .env.example .env
+nano .env
+```
+
+Renseignez votre token Conso API et le PRM à 14 chiffres de votre compteur dans `.env` :
 
 ```dotenv
 CONSO_API_TOKEN=votre-token
 CONSO_API_PRM=12345678901234
 ```
 
-Le fichier `.env` est chargé automatiquement au démarrage et reste ignoré par Git. Une variable déjà définie dans le terminal est prioritaire sur la valeur du fichier.
+La commande `fetch` charge automatiquement ce fichier. Une variable déjà définie dans le terminal est prioritaire sur la valeur du fichier.
 
-## Importer les 30 derniers jours
+### Importer et lancer le dashboard
+
+Importez les 30 derniers jours, puis démarrez le serveur :
 
 ```sh
 ./conso-dashboard fetch
+./conso-dashboard serve -addr 127.0.0.1:8080
 ```
 
-Depuis les sources, utilisez `go run . fetch` à la place de `./conso-dashboard fetch`.
+Ouvrez <http://localhost:8080>. La base est créée dans `data/conso.duckdb` et les logs s'affichent dans le terminal. Utilisez **Ctrl+C** pour arrêter le serveur.
 
-Pour importer uniquement les données de la veille :
+### Refaire un import
+
+Arrêtez d'abord le serveur avec `Ctrl+C` pour libérer DuckDB, puis choisissez une commande :
 
 ```sh
+# Les 30 derniers jours
+./conso-dashboard fetch
+
+# La veille, calculée dans le fuseau horaire local
 ./conso-dashboard fetch yesterday
-```
 
-Cette commande convient à une future exécution quotidienne automatisée. Elle calcule la veille dans le fuseau horaire local et peut être relancée sans créer de doublons.
-
-Pour choisir une période :
-
-```sh
+# Une période précise : début inclus, fin exclue
 ./conso-dashboard fetch -start 2026-07-01 -end 2026-07-29
 ```
 
-La date de début est incluse et la date de fin est exclue. La commande découpe automatiquement les périodes pour respecter la limite de Conso API. Elle crée `data/conso.duckdb` et alimente la table `consumption_load_curve`. Un nouvel import met à jour les créneaux existants sans créer de doublons.
-
-## Visualiser les consommations
-
-Après avoir importé des données, lancez le serveur web :
+Un nouvel import met à jour les créneaux existants sans créer de doublons. Relancez ensuite le dashboard :
 
 ```sh
-./conso-dashboard serve
+./conso-dashboard serve -addr 127.0.0.1:8080
 ```
 
-Ouvrez ensuite <http://localhost:8080>. Le dashboard affiche :
+Pour changer le port, remplacez `127.0.0.1:8080` par `127.0.0.1:9090`.
+
+## Fonctionnalités du dashboard
+
+Le dashboard affiche :
 
 - la consommation quotidienne sur la semaine, le mois ou l'année en cours ;
 - la liste des journées, colorée selon leur niveau de consommation ;
 - le détail intrajournalier d'une journée sélectionnée ;
 - le numéro du point de consommation associé aux données.
 
-Les données restent stockées localement dans DuckDB : le dashboard les consulte sans contacter Conso API. Pour changer l'adresse d'écoute :
-
-```sh
-./conso-dashboard serve -addr :9090
-```
+Les données restent stockées localement dans DuckDB : le dashboard les consulte sans contacter Conso API.
 
 ## Données stockées
 
