@@ -110,6 +110,19 @@ Copier le dossier `data` complet, service arrêté, puis relancer le dashboard e
 
 ## Logs
 
+Chaque `fetch` journalise la période demandée, puis un bilan, par exemple :
+
+```text
+fetch: statut=succès récupérés=96 insérés=24 déjà_présents_mis_à_jour=72 non_validés=0 base=data/conso.duckdb
+```
+
+- `récupérés` : nombre de relevés contenus dans les réponses API reçues avec succès ;
+- `insérés` : nouvelles lignes validées dans DuckDB ;
+- `déjà_présents_mis_à_jour` : relevés dont la clé (PRM, horodatage) existait déjà, mis à jour pour conserver les corrections de l'API ;
+- `non_validés` : relevés récupérés mais non validés en base en cas d'échec.
+
+Les compteurs portent sur les relevés traités : un doublon dans une même réponse compte comme une insertion puis une mise à jour. Un relevé identique déjà présent compte aussi comme mis à jour (son `fetched_at` est rafraîchi). Les compteurs d'écriture ne sont ajoutés qu'après validation de chaque transaction ; si un lot échoue, les lots précédents restent validés et apparaissent dans le bilan d'échec. Les erreurs d'arguments sont signalées avant tout appel API, sans bilan d'import.
+
 Les messages de démarrage et les erreurs du serveur sont envoyés à journald. Les requêtes HTTP réussies ne sont pas journalisées. Les imports lancés par systemd disposent de leur propre journal :
 
 ```sh

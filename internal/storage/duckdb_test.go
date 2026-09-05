@@ -67,3 +67,44 @@ func TestDailyConsumptionUsesCalendarDateBoundary(t *testing.T) {
 		t.Fatalf("points = %#v", points)
 	}
 }
+
+func TestImportStatsCountOnlyCommittedReadings(t *testing.T) {
+	store, err := Open(filepath.Join(t.TempDir(), "conso.duckdb"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	ctx := context.Background()
+	if err := store.Migrate(ctx); err != nil {
+		t.Fatal(err)
+	}
+	first := conso.Reading{Date: "2026-07-01 00:15:00", Value: "100", IntervalLength: "PT15M"}
+	second := conso.Reading{Date: "2026-07-01 00:30:00", Value: "200", IntervalLength: "PT15M"}
+	third := conso.Reading{Date: "2026-07-01 00:45:00", Value: "300", IntervalLength: "PT15M"}
+	invalid := conso.Reading{Date: "2026-07-01 01:00:00", Value: "invalid", IntervalLength: "PT15M"}
+	for _, tc := range []struct {
+		name      string
+		prm       string
+		readings  []conso.Reading
+		want      ImportStats
+		wantError bool
+	}{
+		{"first import", "123", []conso.Reading{first}, ImportStats{Inserted: 1}, false},
+		{"repeat", "123", []conso.Reading{first}, ImportStats{Existing: 1}, false},
+		{"mixed and duplicate", "123", []conso.Reading{first, second, second}, ImportStats{Inserted: 1, Existing: 2}, false},
+		{"different meter", "456", []conso.Reading{first}, ImportStats{Inserted: 1}, false},
+		{"empty", "123", nil, ImportStats{}, false},
+		{"rollback", "123", []conso.Reading{third, invalid}, ImportStats{}, true},
+		{"retry after rollback", "123", []conso.Reading{third}, ImportStats{Inserted: 1}, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := store.UpsertConsumptionLoadCurve(ctx, tc.prm, "BRUT", tc.readings)
+			if (err != nil) != tc.wantError {
+				t.Fatalf("error = %v", err)
+			}
+			if got != tc.want {
+				t.Fatalf("stats = %+v, want %+v", got, tc.want)
+			}
+		})
+	}
+}

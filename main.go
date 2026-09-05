@@ -40,7 +40,7 @@ func main() {
 	}
 }
 
-func runImport(args []string, now time.Time) error {
+func runImport(args []string, now time.Time) (importErr error) {
 	const dbPath = "data/conso.duckdb"
 	if err := loadEnvFile(".env"); err != nil {
 		return err
@@ -69,6 +69,19 @@ func runImport(args []string, now time.Time) error {
 		return fmt.Errorf("la date de début doit précéder la date de fin")
 	}
 
+	var recovered int
+	var totals storage.ImportStats
+	log.Printf("fetch: début=%s fin_exclue=%s", *startFlag, *endFlag)
+	defer func() {
+		status := "succès"
+		if importErr != nil {
+			status = "échec"
+		}
+		log.Printf("fetch: statut=%s récupérés=%d insérés=%d déjà_présents_mis_à_jour=%d non_validés=%d base=%s",
+			status, recovered, totals.Inserted, totals.Existing,
+			recovered-totals.Inserted-totals.Existing, dbPath)
+	}()
+
 	prm := os.Getenv("CONSO_API_PRM")
 	client, err := conso.NewClient(os.Getenv("CONSO_API_BASE_URL"), os.Getenv("CONSO_API_TOKEN"), prm, nil)
 	if err != nil {
@@ -88,19 +101,19 @@ func runImport(args []string, now time.Time) error {
 	if err := store.Migrate(ctx); err != nil {
 		return err
 	}
-	var count int
 	for _, period := range splitPeriod(start, end, 6) {
 		result, err := client.Consumption(ctx, period.start, period.end)
 		if err != nil {
 			return err
 		}
+		recovered += len(result.IntervalReading)
 		stored, err := store.UpsertConsumptionLoadCurve(ctx, prm, result.Quality, result.IntervalReading)
 		if err != nil {
 			return err
 		}
-		count += stored
+		totals.Inserted += stored.Inserted
+		totals.Existing += stored.Existing
 	}
-	fmt.Printf("%d relevé(s) enregistré(s) dans %s\n", count, dbPath)
 	return nil
 }
 
