@@ -23,6 +23,8 @@ tar -xzf conso-dashboard-linux-amd64.tar.gz
 
 Le nom de l'exécutable reste `conso-dashboard`. La version est portée par la release et le nom de l'archive.
 
+Pour un démarrage automatique sous Linux, consultez le [guide systemd](deploy/systemd/README.md) : installation du service, import automatique de la veille à 8 h (Europe/Paris) et gestion des logs avec journald.
+
 ## Configuration
 
 Créez un fichier `.env` dans le dossier depuis lequel vous lancerez l'application. Depuis les sources, vous pouvez copier `.env.example`. Renseignez votre token Conso API et le numéro PRM à 14 chiffres de votre compteur :
