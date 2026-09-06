@@ -17,7 +17,7 @@ var version = "dev"
 
 func main() {
 	if len(os.Args) < 2 {
-		log.Fatal("utilisation: conso-dashboard <fetch|serve|version>")
+		log.Fatal("utilisation: conso-dashboard <fetch|serve|demo|version>")
 	}
 
 	switch os.Args[1] {
@@ -25,6 +25,10 @@ func main() {
 		fmt.Printf("conso-dashboard %s\n", version)
 	case "serve":
 		if err := runServer(os.Args[2:]); err != nil {
+			log.Fatal(err)
+		}
+	case "demo":
+		if err := runDemo(os.Args[2:]); err != nil {
 			log.Fatal(err)
 		}
 	case "fetch":
@@ -36,7 +40,7 @@ func main() {
 			log.Fatal(err)
 		}
 	default:
-		log.Fatalf("commande inconnue %q; utilisation: conso-dashboard <fetch|serve|version>", os.Args[1])
+		log.Fatalf("commande inconnue %q; utilisation: conso-dashboard <fetch|serve|demo|version>", os.Args[1])
 	}
 }
 

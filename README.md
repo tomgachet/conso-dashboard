@@ -68,9 +68,25 @@ Le [guide systemd](deploy/systemd/README.md) détaille l'accès réseau, la rét
 
 ## Tester sans installation
 
-Ce parcours lance le binaire directement, sans `sudo`, service systemd ni import automatique. La configuration et les données restent dans le dossier depuis lequel vous lancez les commandes.
+Ce parcours lance le binaire directement, sans `sudo`, service systemd ni import automatique. Avec vos données réelles, la configuration et les données restent dans le dossier depuis lequel vous lancez les commandes.
 
-### Télécharger et configurer
+### Démonstration sans compte API
+
+Téléchargez et extrayez le binaire, puis lancez la démonstration :
+
+```sh
+curl -fLO https://github.com/tomgachet/conso-dashboard/releases/latest/download/conso-dashboard-linux-amd64.tar.gz
+tar -xzf conso-dashboard-linux-amd64.tar.gz
+./conso-dashboard demo
+```
+
+Ouvrez <http://127.0.0.1:3457>. Aucun token, fichier `.env` ou accès à l’API n’est nécessaire. Le dashboard affiche « Données de démonstration » et utilise une base DuckDB en mémoire, indépendante de vos données réelles. Les relevés fictifs couvrent l’année précédente et l’année en cours jusqu’à aujourd’hui inclus, avec des journées complètes de 96 quarts d’heure.
+
+Arrêtez avec **Ctrl+C** : les données fictives disparaissent et seront recréées au prochain lancement. Si le port est déjà utilisé, notamment par une installation systemd, lancez `./conso-dashboard demo -addr 127.0.0.1:3458` et ouvrez ce port dans le navigateur.
+
+La démonstration est réservée à cet essai explicite ; `./install.sh` et les services systemd continuent d’utiliser vos identifiants API et vos données réelles.
+
+### Télécharger et configurer avec vos données réelles
 
 ```sh
 curl -fLO https://github.com/tomgachet/conso-dashboard/releases/latest/download/conso-dashboard-linux-amd64.tar.gz

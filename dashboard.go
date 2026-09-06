@@ -38,22 +38,26 @@ func runServer(args []string) error {
 	}
 	defer store.Close()
 
+	return serveDashboard(*addr, store, false)
+}
+
+func serveDashboard(addr string, store dailyReader, demo bool) error {
 	static, err := fs.Sub(dashboardFiles, "web")
 	if err != nil {
 		return fmt.Errorf("chargement du dashboard: %w", err)
 	}
 	mux := http.NewServeMux()
 	mux.Handle("GET /", http.FileServerFS(static))
-	mux.HandleFunc("GET /api/info", infoHandler(store))
+	mux.HandleFunc("GET /api/info", infoHandlerMode(store, demo))
 	mux.HandleFunc("GET /api/daily", dailyHandler(store))
 	mux.HandleFunc("GET /api/intervals", intervalHandler(store))
 
 	server := &http.Server{
-		Addr:              *addr,
+		Addr:              addr,
 		Handler:           mux,
 		ReadHeaderTimeout: 5 * time.Second,
 	}
-	displayAddr := *addr
+	displayAddr := addr
 	if strings.HasPrefix(displayAddr, ":") {
 		displayAddr = "localhost" + displayAddr
 	}
@@ -62,6 +66,10 @@ func runServer(args []string) error {
 }
 
 func infoHandler(reader dailyReader) http.HandlerFunc {
+	return infoHandlerMode(reader, false)
+}
+
+func infoHandlerMode(reader dailyReader, demo bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		prm, err := reader.PRM(r.Context())
 		if err != nil {
@@ -69,7 +77,10 @@ func infoHandler(reader dailyReader) http.HandlerFunc {
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "lecture de DuckDB impossible"})
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]string{"prm": prm})
+		writeJSON(w, http.StatusOK, struct {
+			PRM  string `json:"prm"`
+			Demo bool   `json:"demo,omitempty"`
+		}{PRM: prm, Demo: demo})
 	}
 }
 
