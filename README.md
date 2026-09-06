@@ -15,9 +15,10 @@ Le projet reste volontairement simple et autonome :
 ## Choisir un mode d'utilisation
 
 - [Installation automatique avec systemd](#installation-automatique-avec-systemd) : pour faire tourner le dashboard en continu, avec import quotidien automatique.
-- [Tester sans installation](#tester-sans-installation) : pour lancer le dashboard manuellement dans un dossier local.
+- [Démonstration sans compte API](#démonstration-sans-compte-api) : pour découvrir le dashboard avec des données fictives.
+- [Tester avec vos données réelles](#télécharger-et-configurer-avec-vos-données-réelles) : pour lancer le dashboard manuellement avec votre compteur.
 
-Les deux parcours utilisent l'archive Linux amd64 de la [dernière release](https://github.com/tomgachet/conso-dashboard/releases/latest), avec le binaire déjà compilé. Aucun clonage Git ni installation de Go n'est nécessaire.
+Ces parcours utilisent l'archive Linux amd64 de la [dernière release](https://github.com/tomgachet/conso-dashboard/releases/latest), avec le binaire déjà compilé. Aucun clonage Git ni installation de Go n'est nécessaire.
 
 ## Installation automatique avec systemd
 
@@ -82,7 +83,27 @@ tar -xzf conso-dashboard-linux-amd64.tar.gz
 
 Ouvrez <http://127.0.0.1:3457>. Aucun token, fichier `.env` ou accès à l’API n’est nécessaire. Le dashboard affiche « Données de démonstration » et utilise une base DuckDB en mémoire, indépendante de vos données réelles. Les relevés fictifs couvrent l’année précédente et l’année en cours jusqu’à aujourd’hui inclus, avec des journées complètes de 96 quarts d’heure.
 
-Arrêtez avec **Ctrl+C** : les données fictives disparaissent et seront recréées au prochain lancement. Si le port est déjà utilisé, notamment par une installation systemd, lancez `./conso-dashboard demo -addr 127.0.0.1:3458` et ouvrez ce port dans le navigateur.
+Vous pouvez tester les regroupements par jour, semaine, mois et trimestre, ouvrir le détail d’une journée et parcourir le calendrier, y compris l’année précédente. Les données simulent une consommation plus élevée en hiver et des pointes le matin et le soir. Le PRM `00000000000000` est fictif. La journée d’aujourd’hui est entièrement générée, même si elle n’est pas encore terminée.
+
+Arrêtez avec **Ctrl+C** : les données fictives disparaissent et seront recréées au prochain lancement. Aucun fichier de configuration ou de données réelles n’est lu ni modifié.
+
+Si le port est déjà utilisé, notamment par une installation systemd :
+
+```sh
+./conso-dashboard demo -addr 127.0.0.1:3458
+```
+
+Ouvrez alors <http://127.0.0.1:3458>. La démo peut fonctionner en parallèle du service existant sur ce port distinct.
+
+Pour tester depuis les sources, avec Go et les prérequis de compilation disponibles, lancez depuis la racine du dépôt :
+
+```sh
+go run . demo
+# Autre port si nécessaire :
+go run . demo -addr 127.0.0.1:3458
+```
+
+Le premier lancement depuis les sources peut nécessiter un accès Internet pour télécharger les dépendances Go ; la démo elle-même ne contacte pas Conso API.
 
 La démonstration est réservée à cet essai explicite ; `./install.sh` et les services systemd continuent d’utiliser vos identifiants API et vos données réelles.
 
