@@ -205,4 +205,10 @@ go test ./...
 
 ## Licence
 
-Ce projet est distribué sous licence MIT.
+À partir de la version **v1.0.0**, conso-dashboard est distribué sous la **GNU Affero General Public License, version 3 uniquement** (`AGPL-3.0-only`). Le texte complet est disponible dans [LICENSE](LICENSE).
+
+Copyright © 2026 Thomas Gachet.
+
+Les versions publiées avant v1.0.0 restent disponibles sous leur licence MIT d’origine. Les dépendances conservent leurs licences respectives.
+
+Le code source est disponible sur [GitHub](https://github.com/tomgachet/conso-dashboard). Pour retrouver les sources correspondant à un binaire de release, consultez le tag de sa version.
