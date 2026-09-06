@@ -1,0 +1,27 @@
+[Unit]
+Description=Import quotidien Conso Dashboard
+Wants=network-online.target
+After=network-online.target
+Conflicts=conso-dashboard.service
+Before=conso-dashboard.service
+OnSuccess=conso-dashboard.service
+OnFailure=conso-dashboard.service
+
+[Service]
+Type=oneshot
+User=conso-dashboard
+Group=conso-dashboard
+StateDirectory=conso-dashboard
+StateDirectoryMode=0750
+WorkingDirectory=/var/lib/conso-dashboard
+Environment=TZ=Europe/Paris
+ExecStart=/usr/local/bin/conso-dashboard fetch yesterday
+TimeoutStartSec=6min
+UMask=0027
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=conso-dashboard-fetch

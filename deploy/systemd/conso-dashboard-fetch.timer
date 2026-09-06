@@ -1,0 +1,11 @@
+[Unit]
+Description=Import de la veille chaque jour à 8 h (Europe/Paris)
+
+[Timer]
+OnCalendar=*-*-* 08:00:00 Europe/Paris
+AccuracySec=1s
+Persistent=true
+Unit=conso-dashboard-fetch.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,26 @@
+[Unit]
+Description=Conso Dashboard
+After=network.target
+
+[Service]
+Type=simple
+User=conso-dashboard
+Group=conso-dashboard
+StateDirectory=conso-dashboard
+StateDirectoryMode=0750
+WorkingDirectory=/var/lib/conso-dashboard
+Environment=TZ=Europe/Paris
+ExecStart=/usr/local/bin/conso-dashboard serve -addr 127.0.0.1:3457
+Restart=on-failure
+RestartSec=5s
+UMask=0027
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=conso-dashboard
+
+[Install]
+WantedBy=multi-user.target

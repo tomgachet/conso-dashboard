@@ -139,24 +139,36 @@ func (s *Store) Migrate(ctx context.Context) error {
 	return nil
 }
 
-func (s *Store) UpsertConsumptionLoadCurve(ctx context.Context, prm, quality string, readings []conso.Reading) (int, error) {
+type ImportStats struct {
+	Inserted int
+	Existing int
+}
+
+func (s *Store) UpsertConsumptionLoadCurve(ctx context.Context, prm, quality string, readings []conso.Reading) (ImportStats, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return 0, fmt.Errorf("début de transaction: %w", err)
+		return ImportStats{}, fmt.Errorf("début de transaction: %w", err)
 	}
 	defer tx.Rollback()
 
-	count := 0
+	stats := ImportStats{}
 	for _, reading := range readings {
 		if _, err := time.Parse("2006-01-02 15:04:05", reading.Date); err != nil {
-			return 0, fmt.Errorf("horodatage %q invalide: %w", reading.Date, err)
+			return ImportStats{}, fmt.Errorf("horodatage %q invalide: %w", reading.Date, err)
 		}
 		valueW, err := strconv.ParseInt(reading.Value, 10, 64)
 		if err != nil {
-			return 0, fmt.Errorf("valeur %q invalide pour %s: %w", reading.Value, reading.Date, err)
+			return ImportStats{}, fmt.Errorf("valeur %q invalide pour %s: %w", reading.Value, reading.Date, err)
 		}
 		if reading.IntervalLength == "" {
-			return 0, fmt.Errorf("durée d'intervalle absente pour %s", reading.Date)
+			return ImportStats{}, fmt.Errorf("durée d'intervalle absente pour %s", reading.Date)
+		}
+		var exists bool
+		if err := tx.QueryRowContext(ctx, `
+			SELECT EXISTS (SELECT 1 FROM consumption_load_curve
+			WHERE prm = ? AND reading_at = CAST(? AS TIMESTAMP))
+		`, prm, reading.Date).Scan(&exists); err != nil {
+			return ImportStats{}, fmt.Errorf("recherche de %s: %w", reading.Date, err)
 		}
 		_, err = tx.ExecContext(ctx, `
 			INSERT INTO consumption_load_curve
@@ -170,12 +182,16 @@ func (s *Store) UpsertConsumptionLoadCurve(ctx context.Context, prm, quality str
 				fetched_at = excluded.fetched_at
 		`, prm, reading.Date, valueW, reading.IntervalLength, reading.MeasureType, quality)
 		if err != nil {
-			return 0, fmt.Errorf("enregistrement de %s: %w", reading.Date, err)
+			return ImportStats{}, fmt.Errorf("enregistrement de %s: %w", reading.Date, err)
 		}
-		count++
+		if exists {
+			stats.Existing++
+		} else {
+			stats.Inserted++
+		}
 	}
 	if err := tx.Commit(); err != nil {
-		return 0, fmt.Errorf("validation de la transaction: %w", err)
+		return ImportStats{}, fmt.Errorf("validation de la transaction: %w", err)
 	}
-	return count, nil
+	return stats, nil
 }

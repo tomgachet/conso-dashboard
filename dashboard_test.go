@@ -52,7 +52,7 @@ func TestInfoHandler(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("status = %d", recorder.Code)
 	}
-	if got := recorder.Body.String(); got != "{\"prm\":\"12345678901234\"}\n" {
+	if got := recorder.Body.String(); got != "{\"prm\":\"12345678901234\",\"version\":\""+version+"\"}\n" {
 		t.Fatalf("body = %q", got)
 	}
 }
