@@ -186,6 +186,15 @@ GROUP BY day
 ORDER BY day;
 ```
 
+## Limites actuelles
+
+- **Plateforme** : l’archive précompilée est disponible uniquement pour Linux amd64. L’installateur automatique cible Debian / Ubuntu avec systemd 249 ou supérieur.
+- **Import quotidien** : le timer lance un import à 8 h, heure de Paris. En cas d’échec API ou de données encore indisponibles, aucune nouvelle tentative automatique n’est programmée dans la journée. Relancez avec `sudo conso-dashboard-ctl fetch yesterday`.
+- **Rattrapage après un arrêt** : si la machine était éteinte à l’échéance, le timer importe la veille de son exécution. Après plusieurs jours d’arrêt, les journées plus anciennes doivent être récupérées avec `sudo conso-dashboard-ctl fetch -start AAAA-MM-JJ -end AAAA-MM-JJ` (début inclus, fin exclue).
+- **Imports longs** : chaque import est limité à cinq minutes côté application et six minutes côté systemd. Découpez les longues périodes si cette limite est atteinte.
+- **Disponibilité pendant l’import** : les imports gérés par systemd ou la commande d’administration arrêtent temporairement le dashboard pour libérer l’accès à DuckDB, puis le relancent.
+- **Version depuis les sources** : un binaire compilé par `./install.sh` affiche actuellement `dev`. Les binaires de release affichent le tag de version dans le dashboard et avec `--version`.
+
 ## Tests
 
 ```sh
