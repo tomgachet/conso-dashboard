@@ -78,9 +78,10 @@ func infoHandlerMode(reader dailyReader, demo bool) http.HandlerFunc {
 			return
 		}
 		writeJSON(w, http.StatusOK, struct {
-			PRM  string `json:"prm"`
-			Demo bool   `json:"demo,omitempty"`
-		}{PRM: prm, Demo: demo})
+			PRM     string `json:"prm"`
+			Version string `json:"version"`
+			Demo    bool   `json:"demo,omitempty"`
+		}{PRM: prm, Version: version, Demo: demo})
 	}
 }
 
