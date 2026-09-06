@@ -191,16 +191,22 @@ Références : [systemd.exec](https://www.freedesktop.org/software/systemd/man/l
 
 ## Mise à jour
 
-Suivre la procédure de maintenance ci-dessus pour arrêter le timer et attendre la fin de tout import, puis sauvegarder le dossier `data` service arrêté. Après extraction du nouveau binaire dans le dossier courant :
+Télécharger la nouvelle archive depuis les [releases GitHub](https://github.com/tomgachet/conso-dashboard/releases), l’extraire dans un nouveau dossier, puis lancer depuis ce dossier :
 
 ```sh
-sudo systemctl stop conso-dashboard.service
-sudo install -m 0755 conso-dashboard /usr/local/bin/conso-dashboard
-sudo install -m 0755 deploy/systemd/conso-dashboard-ctl /usr/local/bin/conso-dashboard-ctl
-sudo systemctl start conso-dashboard.service
-sudo systemctl start conso-dashboard-fetch.timer
-/usr/local/bin/conso-dashboard --version
-sudo systemctl status conso-dashboard.service
+./install.sh
 ```
 
-Le binaire est séparé de la configuration et des données.
+Aucune désinstallation n’est nécessaire, y compris pour passer d’une installation depuis les sources à une release. L’installateur conserve le `.env` et l’historique dans `/var/lib/conso-dashboard/`. Il gère l’arrêt temporaire des services, remplace le binaire, la commande d’administration et les unités systemd, refait l’import des 30 derniers jours sans doublons, puis relance le dashboard et le timer. Si un import manuel est en cours, attendre sa fin et relancer l’installation.
+
+Les personnalisations créées avec `systemctl edit` sont conservées ; les modifications directes des fichiers d’unités sont écrasées.
+
+Vérifier ensuite la version installée et les services :
+
+```sh
+/usr/local/bin/conso-dashboard --version
+sudo systemctl status conso-dashboard.service
+systemctl list-timers conso-dashboard-fetch.timer
+```
+
+Après une installation réussie, l’archive téléchargée et le dossier extrait peuvent être supprimés : les fichiers nécessaires ont été copiés dans `/usr/local/bin/` et `/etc/systemd/system/`. Conserver `/var/lib/conso-dashboard/`, qui contient la configuration et les données.
