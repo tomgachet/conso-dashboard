@@ -163,7 +163,9 @@ Pour changer le port, remplacez `127.0.0.1:3457` par `127.0.0.1:9090`.
 
 Le dashboard affiche :
 
-- la consommation quotidienne sur la semaine, le mois ou l'année en cours ;
+- la consommation quotidienne sur la semaine, le mois, le trimestre ou l’année en cours ;
+- le regroupement des consommations par jour, semaine, mois ou trimestre ;
+- un calendrier annuel des consommations quotidiennes, avec navigation entre les années et couleurs selon le niveau de consommation ;
 - la liste des journées, colorée selon leur niveau de consommation ;
 - le détail intrajournalier d'une journée sélectionnée ;
 - le numéro du point de consommation associé aux données.
