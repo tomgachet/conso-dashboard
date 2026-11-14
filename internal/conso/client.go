@@ -57,9 +57,46 @@ func NewClient(baseURL, token, prm string, httpClient *http.Client) (*Client, er
 }
 
 func (c *Client) Consumption(ctx context.Context, start, end time.Time) (Consumption, error) {
-	var result Consumption
-	if err := c.get(ctx, "consumption_load_curve", start, end, &result); err != nil {
+	var response struct {
+		Grandeur []struct {
+			Metier   string `json:"grandeurMetier"`
+			Physique string `json:"grandeurPhysique"`
+			Unite    string `json:"unite"`
+			Points   []struct {
+				Date     string `json:"d"`
+				Value    string `json:"v"`
+				Interval string `json:"p"`
+				Nature   string `json:"n"`
+			} `json:"points"`
+		} `json:"grandeur"`
+	}
+	if err := c.get(ctx, "courbe_de_charge_consommation", start, end, &response); err != nil {
 		return Consumption{}, err
+	}
+	var result Consumption
+	found := false
+	for _, series := range response.Grandeur {
+		if series.Metier != "CONS" || series.Physique != "PA" {
+			continue
+		}
+		if found || series.Unite != "W" || series.Points == nil {
+			return Consumption{}, fmt.Errorf("réponse Conso API invalide: série CONS/PA dupliquée, unité différente de W ou points absents")
+		}
+		found = true
+		for _, point := range series.Points {
+			if _, err := time.Parse("2006-01-02 15:04:05", point.Date); err != nil {
+				return Consumption{}, fmt.Errorf("horodatage Conso API %q invalide: %w", point.Date, err)
+			}
+			if point.Interval != "PT15M" && point.Interval != "PT30M" {
+				return Consumption{}, fmt.Errorf("intervalle Conso API %q non pris en charge", point.Interval)
+			}
+			result.IntervalReading = append(result.IntervalReading, Reading{
+				Date: point.Date, Value: point.Value, IntervalLength: point.Interval, MeasureType: point.Nature,
+			})
+		}
+	}
+	if !found {
+		return Consumption{}, fmt.Errorf("réponse Conso API invalide: série CONS/PA absente")
 	}
 	return result, nil
 }
@@ -70,9 +107,9 @@ func (c *Client) get(ctx context.Context, dataType string, start, end time.Time,
 		return fmt.Errorf("adresse Conso API invalide: %w", err)
 	}
 	query := u.Query()
-	query.Set("prm", c.prm)
-	query.Set("start", start.Format(time.DateOnly))
-	query.Set("end", end.Format(time.DateOnly))
+	query.Set("pointId", c.prm)
+	query.Set("dateDebut", start.Format(time.DateOnly))
+	query.Set("dateFin", end.Format(time.DateOnly))
 	u.RawQuery = query.Encode()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)

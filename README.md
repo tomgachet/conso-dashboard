@@ -4,6 +4,8 @@ Une application Go pour importer et visualiser la consommation électrique d'un 
 
 Elle récupère la courbe de consommation via [Conso API](https://conso.boris.sh/), la conserve localement dans DuckDB et fournit un dashboard web pour explorer les consommations quotidiennes et leur détail intrajournalier.
 
+Le collecteur utilise l’API Enedis Mesure synchrone V2 via `courbe_de_charge_consommation`, avec les paramètres `pointId`, `dateDebut` et `dateFin` ([migration 2026](https://conso.boris.sh/migration-2026/)). Le token, le fichier `.env` et la base existants restent utilisables. Les points de puissance consommée en watts sont convertis vers le modèle local, avec des intervalles de 15 ou 30 minutes. L’ancien champ global `quality` reste vide pour les nouveaux imports ; la nature de chaque point est conservée dans `measure_type`.
+
 Le projet reste volontairement simple et autonome :
 
 - un exécutable Go unique pour l'import et le serveur HTTP ;
