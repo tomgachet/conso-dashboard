@@ -11,7 +11,7 @@ permissions:
 jobs:
   release:
     name: Build and publish release
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout
@@ -38,6 +38,14 @@ jobs:
           set -euo pipefail
           mkdir -p dist/linux-amd64
           CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags "-s -w -X main.version=${VERSION}" -o dist/linux-amd64/conso-dashboard .
+          glibc_limit=2.39
+          glibc_required=$(readelf --version-info dist/linux-amd64/conso-dashboard | grep -oE 'GLIBC_[0-9]+(\.[0-9]+)+' | cut -d_ -f2 | sort -V | tail -n 1)
+          echo "Binary requires glibc ${glibc_required}"
+          if [[ $(printf '%s\n' "$glibc_required" "$glibc_limit" | sort -V | tail -n 1) != "$glibc_limit" ]]; then
+            echo "Binary exceeds the glibc ${glibc_limit} compatibility limit" >&2
+            exit 1
+          fi
+          test "$(dist/linux-amd64/conso-dashboard version)" = "conso-dashboard ${VERSION}"
           cp LICENSE README.md .env.example install.sh dist/linux-amd64/
           mkdir -p dist/linux-amd64/deploy
           cp -R deploy/systemd dist/linux-amd64/deploy/
